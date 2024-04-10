@@ -2,8 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-
-import 'dart:ui' as ui show lerpDouble, WindowPadding;
+import 'dart:ui' as ui show ViewPadding, lerpDouble;
 
 import 'package:flutter/foundation.dart';
 
@@ -12,8 +11,8 @@ import 'basic_types.dart';
 /// Base class for [EdgeInsets] that allows for text-direction aware
 /// resolution.
 ///
-/// A property or argument of this type accepts classes created either with [new
-/// EdgeInsets.fromLTRB] and its variants, or [new
+/// A property or argument of this type accepts classes created either with [
+/// EdgeInsets.fromLTRB] and its variants, or [
 /// EdgeInsetsDirectional.fromSTEB] and its variants.
 ///
 /// To convert an [EdgeInsetsGeometry] object of indeterminate type into a
@@ -65,13 +64,10 @@ abstract class EdgeInsetsGeometry {
 
   /// The total offset in the given direction.
   double along(Axis axis) {
-    assert(axis != null);
-    switch (axis) {
-      case Axis.horizontal:
-        return horizontal;
-      case Axis.vertical:
-        return vertical;
-    }
+    return switch (axis) {
+      Axis.horizontal => horizontal,
+      Axis.vertical   => vertical,
+    };
   }
 
   /// The size that this [EdgeInsets] would occupy with an empty interior.
@@ -158,16 +154,16 @@ abstract class EdgeInsetsGeometry {
     );
   }
 
-  /// Returns the a new [EdgeInsetsGeometry] object with all values greater than
+  /// Returns a new [EdgeInsetsGeometry] object with all values greater than
   /// or equal to `min`, and less than or equal to `max`.
   EdgeInsetsGeometry clamp(EdgeInsetsGeometry min, EdgeInsetsGeometry max) {
     return _MixedEdgeInsets.fromLRSETB(
-      _left.clamp(min._left, max._left),
-      _right.clamp(min._right, max._right),
-      _start.clamp(min._start, max._start),
-      _end.clamp(min._end, max._end),
-      _top.clamp(min._top, max._top),
-      _bottom.clamp(min._bottom, max._bottom),
+      clampDouble(_left, min._left, max._left),
+      clampDouble(_right, min._right, max._right),
+      clampDouble(_start, min._start, max._start),
+      clampDouble(_end, min._end, max._end),
+      clampDouble(_top, min._top, max._top),
+      clampDouble(_bottom, min._bottom, max._bottom),
     );
   }
 
@@ -217,17 +213,21 @@ abstract class EdgeInsetsGeometry {
   ///
   /// {@macro dart.ui.shadow.lerp}
   static EdgeInsetsGeometry? lerp(EdgeInsetsGeometry? a, EdgeInsetsGeometry? b, double t) {
-    assert(t != null);
-    if (a == null && b == null)
-      return null;
-    if (a == null)
+    if (identical(a, b)) {
+      return a;
+    }
+    if (a == null) {
       return b! * t;
-    if (b == null)
+    }
+    if (b == null) {
       return a * (1.0 - t);
-    if (a is EdgeInsets && b is EdgeInsets)
+    }
+    if (a is EdgeInsets && b is EdgeInsets) {
       return EdgeInsets.lerp(a, b, t);
-    if (a is EdgeInsetsDirectional && b is EdgeInsetsDirectional)
+    }
+    if (a is EdgeInsetsDirectional && b is EdgeInsetsDirectional) {
       return EdgeInsetsDirectional.lerp(a, b, t);
+    }
     return _MixedEdgeInsets.fromLRSETB(
       ui.lerpDouble(a._left, b._left, t)!,
       ui.lerpDouble(a._right, b._right, t)!,
@@ -252,10 +252,12 @@ abstract class EdgeInsetsGeometry {
   @override
   String toString() {
     if (_start == 0.0 && _end == 0.0) {
-      if (_left == 0.0 && _right == 0.0 && _top == 0.0 && _bottom == 0.0)
+      if (_left == 0.0 && _right == 0.0 && _top == 0.0 && _bottom == 0.0) {
         return 'EdgeInsets.zero';
-      if (_left == _right && _right == _top && _top == _bottom)
+      }
+      if (_left == _right && _right == _top && _top == _bottom) {
         return 'EdgeInsets.all(${_left.toStringAsFixed(1)})';
+      }
       return 'EdgeInsets(${_left.toStringAsFixed(1)}, '
                         '${_top.toStringAsFixed(1)}, '
                         '${_right.toStringAsFixed(1)}, '
@@ -290,7 +292,7 @@ abstract class EdgeInsetsGeometry {
   }
 
   @override
-  int get hashCode => hashValues(_left, _right, _start, _end, _top, _bottom);
+  int get hashCode => Object.hash(_left, _right, _start, _end, _top, _bottom);
 }
 
 /// An immutable set of offsets in each of the four cardinal directions.
@@ -393,17 +395,26 @@ class EdgeInsets extends EdgeInsetsGeometry {
        right = horizontal,
        bottom = vertical;
 
-  /// Creates insets that match the given window padding.
+  /// Creates insets that match the given view padding.
   ///
   /// If you need the current system padding or view insets in the context of a
-  /// widget, consider using [MediaQuery.of] to obtain these values rather than
-  /// using the value from [dart:ui.window], so that you get notified of
+  /// widget, consider using [MediaQuery.paddingOf] to obtain these values rather than
+  /// using the value from a [FlutterView] directly, so that you get notified of
   /// changes.
-  EdgeInsets.fromWindowPadding(ui.WindowPadding padding, double devicePixelRatio)
+  EdgeInsets.fromViewPadding(ui.ViewPadding padding, double devicePixelRatio)
     : left = padding.left / devicePixelRatio,
       top = padding.top / devicePixelRatio,
       right = padding.right / devicePixelRatio,
       bottom = padding.bottom / devicePixelRatio;
+
+  /// Deprecated. Will be removed in a future version of Flutter.
+  ///
+  /// Use [EdgeInsets.fromViewPadding] instead.
+  @Deprecated(
+    'Use EdgeInsets.fromViewPadding instead. '
+    'This feature was deprecated after v3.8.0-14.0.pre.',
+  )
+  factory EdgeInsets.fromWindowPadding(ui.ViewPadding padding, double devicePixelRatio) = EdgeInsets.fromViewPadding;
 
   /// An [EdgeInsets] with zero offsets in each direction.
   static const EdgeInsets zero = EdgeInsets.only();
@@ -491,25 +502,27 @@ class EdgeInsets extends EdgeInsetsGeometry {
 
   @override
   EdgeInsetsGeometry subtract(EdgeInsetsGeometry other) {
-    if (other is EdgeInsets)
+    if (other is EdgeInsets) {
       return this - other;
+    }
     return super.subtract(other);
   }
 
   @override
   EdgeInsetsGeometry add(EdgeInsetsGeometry other) {
-    if (other is EdgeInsets)
+    if (other is EdgeInsets) {
       return this + other;
+    }
     return super.add(other);
   }
 
   @override
   EdgeInsetsGeometry clamp(EdgeInsetsGeometry min, EdgeInsetsGeometry max) {
     return EdgeInsets.fromLTRB(
-      _left.clamp(min._left, max._left),
-      _top.clamp(min._top, max._top),
-      _right.clamp(min._right, max._right),
-      _bottom.clamp(min._bottom, max._bottom),
+      clampDouble(_left, min._left, max._left),
+      clampDouble(_top, min._top, max._top),
+      clampDouble(_right, min._right, max._right),
+      clampDouble(_bottom, min._bottom, max._bottom),
     );
   }
 
@@ -596,13 +609,15 @@ class EdgeInsets extends EdgeInsetsGeometry {
   ///
   /// {@macro dart.ui.shadow.lerp}
   static EdgeInsets? lerp(EdgeInsets? a, EdgeInsets? b, double t) {
-    assert(t != null);
-    if (a == null && b == null)
-      return null;
-    if (a == null)
+    if (identical(a, b)) {
+      return a;
+    }
+    if (a == null) {
       return b! * t;
-    if (b == null)
+    }
+    if (b == null) {
       return a * (1.0 - t);
+    }
     return EdgeInsets.fromLTRB(
       ui.lerpDouble(a.left, b.left, t)!,
       ui.lerpDouble(a.top, b.top, t)!,
@@ -663,6 +678,43 @@ class EdgeInsetsDirectional extends EdgeInsetsGeometry {
     this.bottom = 0.0,
   });
 
+  /// Creates insets with symmetric vertical and horizontal offsets.
+  ///
+  /// This is equivalent to [EdgeInsets.symmetric], since the inset is the same
+  /// with either [TextDirection]. This constructor is just a convenience for
+  /// type compatibility.
+  ///
+  /// {@tool snippet}
+  /// Eight pixel margin above and below, no horizontal margins:
+  ///
+  /// ```dart
+  /// const EdgeInsetsDirectional.symmetric(vertical: 8.0)
+  /// ```
+  /// {@end-tool}
+  const EdgeInsetsDirectional.symmetric({
+    double horizontal = 0.0,
+    double vertical = 0.0,
+  })  : start = horizontal,
+        end = horizontal,
+        top = vertical,
+        bottom = vertical;
+
+  /// Creates insets where all the offsets are `value`.
+  ///
+  /// {@tool snippet}
+  ///
+  /// Typical eight-pixel margin on all sides:
+  ///
+  /// ```dart
+  /// const EdgeInsetsDirectional.all(8.0)
+  /// ```
+  /// {@end-tool}
+  const EdgeInsetsDirectional.all(double value)
+    : start = value,
+      top = value,
+      end = value,
+      bottom = value;
+
   /// An [EdgeInsetsDirectional] with zero offsets in each direction.
   ///
   /// Consider using [EdgeInsets.zero] instead, since that object has the same
@@ -722,15 +774,17 @@ class EdgeInsetsDirectional extends EdgeInsetsGeometry {
 
   @override
   EdgeInsetsGeometry subtract(EdgeInsetsGeometry other) {
-    if (other is EdgeInsetsDirectional)
+    if (other is EdgeInsetsDirectional) {
       return this - other;
+    }
     return super.subtract(other);
   }
 
   @override
   EdgeInsetsGeometry add(EdgeInsetsGeometry other) {
-    if (other is EdgeInsetsDirectional)
+    if (other is EdgeInsetsDirectional) {
       return this + other;
+    }
     return super.add(other);
   }
 
@@ -821,13 +875,15 @@ class EdgeInsetsDirectional extends EdgeInsetsGeometry {
   ///
   /// {@macro dart.ui.shadow.lerp}
   static EdgeInsetsDirectional? lerp(EdgeInsetsDirectional? a, EdgeInsetsDirectional? b, double t) {
-    assert(t != null);
-    if (a == null && b == null)
-      return null;
-    if (a == null)
+    if (identical(a, b)) {
+      return a;
+    }
+    if (a == null) {
       return b! * t;
-    if (b == null)
+    }
+    if (b == null) {
       return a * (1.0 - t);
+    }
     return EdgeInsetsDirectional.fromSTEB(
       ui.lerpDouble(a.start, b.start, t)!,
       ui.lerpDouble(a.top, b.top, t)!,
@@ -839,12 +895,26 @@ class EdgeInsetsDirectional extends EdgeInsetsGeometry {
   @override
   EdgeInsets resolve(TextDirection? direction) {
     assert(direction != null);
-    switch (direction!) {
-      case TextDirection.rtl:
-        return EdgeInsets.fromLTRB(end, top, start, bottom);
-      case TextDirection.ltr:
-        return EdgeInsets.fromLTRB(start, top, end, bottom);
-    }
+    return switch (direction!) {
+      TextDirection.rtl => EdgeInsets.fromLTRB(end, top, start, bottom),
+      TextDirection.ltr => EdgeInsets.fromLTRB(start, top, end, bottom),
+    };
+  }
+
+  /// Creates a copy of this EdgeInsetsDirectional but with the given
+  /// fields replaced with the new values.
+  EdgeInsetsDirectional copyWith({
+    double? start,
+    double? top,
+    double? end,
+    double? bottom,
+  }) {
+    return EdgeInsetsDirectional.only(
+      start: start ?? this.start,
+      top: top ?? this.top,
+      end: end ?? this.end,
+      bottom: bottom ?? this.bottom,
+    );
   }
 }
 
@@ -942,11 +1012,9 @@ class _MixedEdgeInsets extends EdgeInsetsGeometry {
   @override
   EdgeInsets resolve(TextDirection? direction) {
     assert(direction != null);
-    switch (direction!) {
-      case TextDirection.rtl:
-        return EdgeInsets.fromLTRB(_end + _left, _top, _start + _right, _bottom);
-      case TextDirection.ltr:
-        return EdgeInsets.fromLTRB(_start + _left, _top, _end + _right, _bottom);
-    }
+    return switch (direction!) {
+      TextDirection.rtl => EdgeInsets.fromLTRB(_end + _left, _top, _start + _right, _bottom),
+      TextDirection.ltr => EdgeInsets.fromLTRB(_start + _left, _top, _end + _right, _bottom),
+    };
   }
 }

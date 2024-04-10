@@ -14,14 +14,13 @@ import 'package:test/fake.dart';
 import '../src/common.dart';
 
 void main() {
-  Config config;
-  MemoryFileSystem memoryFileSystem;
-  FakePlatform fakePlatform;
+  late Config config;
+  late MemoryFileSystem memoryFileSystem;
+  late FakePlatform fakePlatform;
 
   setUp(() {
     memoryFileSystem = MemoryFileSystem.test();
     fakePlatform = FakePlatform(
-      operatingSystem: 'linux',
       environment: <String, String>{
         'HOME': '/',
       },
@@ -33,6 +32,7 @@ void main() {
       platform: fakePlatform,
     );
   });
+
   testWithoutContext('Config get set value', () async {
     expect(config.getValue('foo'), null);
     config.setValue('foo', 'bar');
@@ -61,6 +61,29 @@ void main() {
     config.removeValue('foo');
     expect(config.getValue('foo'), null);
     expect(config.keys, isNot(contains('foo')));
+  });
+
+  testWithoutContext('Config does not error on a file with a deprecated field', () {
+    final BufferLogger bufferLogger = BufferLogger.test();
+    final File file = memoryFileSystem.file('.flutter_example')
+      ..writeAsStringSync('''
+{
+  "is-bot": false,
+  "license-hash": "3e8c85e63b26ce223cda96a9a8fbb410",
+  "redisplay-welcome-message": true,
+  "last-devtools-activation-time": "2021-10-04 16:03:19.832823",
+  "last-active-stable-version": "b22742018b3edf16c6cadd7b76d9db5e7f9064b5"
+}
+''');
+    config = Config(
+      'example',
+      fileSystem: memoryFileSystem,
+      logger: bufferLogger,
+      platform: fakePlatform,
+    );
+
+    expect(file.existsSync(), isTrue);
+    expect(bufferLogger.errorText, isEmpty);
   });
 
   testWithoutContext('Config parse error', () {
@@ -94,17 +117,37 @@ void main() {
 
   testWithoutContext('Config does not error on a normally fatal file system exception', () {
     final BufferLogger bufferLogger = BufferLogger.test();
+    final Platform platform = FakePlatform();
     final File file = ErrorHandlingFile(
-      platform: FakePlatform(operatingSystem: 'linux'),
-      fileSystem: MemoryFileSystem.test(),
+      platform: platform,
+      fileSystem: ErrorHandlingFileSystem(delegate: MemoryFileSystem.test(), platform: platform),
       delegate: FakeFile('testfile'),
     );
 
     config = Config.createForTesting(file, bufferLogger);
 
     expect(bufferLogger.errorText, contains('Could not read preferences in testfile'));
-    // Also contains original error message:
-    expect(bufferLogger.errorText, contains('The flutter tool cannot access the file or directory'));
+    expect(bufferLogger.errorText, contains(r'sudo chown -R $(whoami) /testfile'));
+  });
+
+  testWithoutContext('Config.createForTesting does not error when failing to delete a file', () {
+    final BufferLogger bufferLogger = BufferLogger.test();
+
+    final FileExceptionHandler handler = FileExceptionHandler();
+    final MemoryFileSystem fs = MemoryFileSystem.test(opHandle: handler.opHandle);
+    final File file = fs.file('testfile')
+        // We write invalid JSON so that we test catching a `FormatException`
+        ..writeAsStringSync('{"This is not valid JSON"');
+    handler.addError(
+      file,
+      FileSystemOp.delete,
+      const FileSystemException(
+        "Cannot delete file, path = 'testfile' (OS Error: No such file or directory, errno = 2)",
+      ),
+    );
+
+    // Should not throw a FileSystemException
+    Config.createForTesting(file, bufferLogger);
   });
 
   testWithoutContext('Config in home dir is used if it exists', () {

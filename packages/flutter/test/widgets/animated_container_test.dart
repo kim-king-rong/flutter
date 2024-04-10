@@ -2,9 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   testWidgets('AnimatedContainer.debugFillProperties', (WidgetTester tester) async {
@@ -77,21 +77,27 @@ void main() {
         ' │ decoration: BoxDecoration:\n'
         ' │   color: Color(0xff0000ff)\n'
         ' │ configuration: ImageConfiguration(bundle:\n'
-        ' │   PlatformAssetBundle#00000(), devicePixelRatio: 1.0, platform:\n'
+        ' │   PlatformAssetBundle#00000(), devicePixelRatio: 3.0, platform:\n'
         ' │   android)\n'
         ' │\n'
-        ' └─child: RenderLimitedBox#00000\n'
+        ' └─child: RenderPadding#00000\n'
         '   │ parentData: <none> (can use size)\n'
         '   │ constraints: BoxConstraints(w=800.0, h=600.0)\n'
         '   │ size: Size(800.0, 600.0)\n'
-        '   │ maxWidth: 0.0\n'
-        '   │ maxHeight: 0.0\n'
+        '   │ padding: EdgeInsets.zero\n'
         '   │\n'
-        '   └─child: RenderConstrainedBox#00000\n'
-        '       parentData: <none> (can use size)\n'
-        '       constraints: BoxConstraints(w=800.0, h=600.0)\n'
-        '       size: Size(800.0, 600.0)\n'
-        '       additionalConstraints: BoxConstraints(biggest)\n',
+        '   └─child: RenderLimitedBox#00000\n'
+        '     │ parentData: offset=Offset(0.0, 0.0) (can use size)\n'
+        '     │ constraints: BoxConstraints(w=800.0, h=600.0)\n'
+        '     │ size: Size(800.0, 600.0)\n'
+        '     │ maxWidth: 0.0\n'
+        '     │ maxHeight: 0.0\n'
+        '     │\n'
+        '     └─child: RenderConstrainedBox#00000\n'
+        '         parentData: <none> (can use size)\n'
+        '         constraints: BoxConstraints(w=800.0, h=600.0)\n'
+        '         size: Size(800.0, 600.0)\n'
+        '         additionalConstraints: BoxConstraints(biggest)\n',
       ),
     );
   });
@@ -294,9 +300,9 @@ void main() {
           textDirection: TextDirection.ltr,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
-            child: SizedBox(key: target, width: 100.0, height: 200.0),
             transform: Matrix4.diagonal3Values(0.5, 0.5, 1),
             transformAlignment: Alignment.topLeft,
+            child: SizedBox(key: target, width: 100.0, height: 200.0),
           ),
         ),
       ),
@@ -311,9 +317,9 @@ void main() {
           textDirection: TextDirection.ltr,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
-            child: SizedBox(key: target, width: 100.0, height: 200.0),
             transform: Matrix4.diagonal3Values(0.5, 0.5, 1),
             transformAlignment: Alignment.bottomRight,
+            child: SizedBox(key: target, width: 100.0, height: 200.0),
           ),
         ),
       ),
@@ -340,7 +346,7 @@ void main() {
           color: Color(0xFFED1D7F),
         ),
         duration: const Duration(milliseconds: 200),
-      )
+      ),
     );
     expect(tester.firstWidget<Container>(find.byType(Container)).clipBehavior, Clip.none);
     await tester.pumpWidget(
@@ -350,7 +356,7 @@ void main() {
         ),
         duration: const Duration(milliseconds: 200),
         clipBehavior: Clip.antiAlias,
-      )
+      ),
     );
     expect(tester.firstWidget<Container>(find.byType(Container)).clipBehavior, Clip.antiAlias);
   });

@@ -10,7 +10,7 @@ class HotReloadProject extends Project {
   final String pubspec = '''
   name: test
   environment:
-    sdk: ">=2.12.0-0 <3.0.0"
+    sdk: '>=3.2.0-0 <4.0.0'
 
   dependencies:
     flutter:
@@ -72,6 +72,10 @@ class HotReloadProject extends Project {
 
   void toggleState() {
     stateful = !stateful;
-    writeFile(fileSystem.path.join(dir.path, 'lib', 'main.dart'), getCode(stateful));
+    writeFile(
+      fileSystem.path.join(dir.path, 'lib', 'main.dart'),
+      getCode(stateful),
+      writeFutureModifiedDate: true,
+    );
   }
 }

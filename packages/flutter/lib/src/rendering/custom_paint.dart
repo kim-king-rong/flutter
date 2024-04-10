@@ -7,8 +7,6 @@ import 'dart:collection';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/semantics.dart';
 
-import 'package:vector_math/vector_math_64.dart';
-
 import 'box.dart';
 import 'object.dart';
 import 'proxy_box.dart';
@@ -28,7 +26,7 @@ typedef SemanticsBuilderCallback = List<CustomPainterSemantics> Function(Size si
 /// [RenderCustomPaint] (in the rendering library).
 ///
 /// To implement a custom painter, either subclass or implement this interface
-/// to define your custom paint delegate. [CustomPaint] subclasses must
+/// to define your custom paint delegate. [CustomPainter] subclasses must
 /// implement the [paint] and [shouldRepaint] methods, and may optionally also
 /// implement the [hitTest] and [shouldRebuildSemantics] methods, and the
 /// [semanticsBuilder] getter.
@@ -73,12 +71,12 @@ typedef SemanticsBuilderCallback = List<CustomPainterSemantics> Function(Size si
 /// class Sky extends CustomPainter {
 ///   @override
 ///   void paint(Canvas canvas, Size size) {
-///     var rect = Offset.zero & size;
-///     var gradient = RadialGradient(
-///       center: const Alignment(0.7, -0.6),
+///     final Rect rect = Offset.zero & size;
+///     const RadialGradient gradient = RadialGradient(
+///       center: Alignment(0.7, -0.6),
 ///       radius: 0.2,
-///       colors: [const Color(0xFFFFFF00), const Color(0xFF0099FF)],
-///       stops: [0.4, 1.0],
+///       colors: <Color>[Color(0xFFFFFF00), Color(0xFF0099FF)],
+///       stops: <double>[0.4, 1.0],
 ///     );
 ///     canvas.drawRect(
 ///       rect,
@@ -93,13 +91,13 @@ typedef SemanticsBuilderCallback = List<CustomPainterSemantics> Function(Size si
 ///       // with the label "Sun". When text to speech feature is enabled on the
 ///       // device, a user will be able to locate the sun on this picture by
 ///       // touch.
-///       var rect = Offset.zero & size;
-///       var width = size.shortestSide * 0.4;
+///       Rect rect = Offset.zero & size;
+///       final double width = size.shortestSide * 0.4;
 ///       rect = const Alignment(0.8, -0.9).inscribe(Size(width, width), rect);
-///       return [
+///       return <CustomPainterSemantics>[
 ///         CustomPainterSemantics(
 ///           rect: rect,
-///           properties: SemanticsProperties(
+///           properties: const SemanticsProperties(
 ///             label: 'Sun',
 ///             textDirection: TextDirection.ltr,
 ///           ),
@@ -120,6 +118,23 @@ typedef SemanticsBuilderCallback = List<CustomPainterSemantics> Function(Size si
 /// }
 /// ```
 /// {@end-tool}
+///
+/// ## Composition and the sharing of canvases
+///
+/// Widgets (or rather, render objects) are composited together using a minimum
+/// number of [Canvas]es, for performance reasons. As a result, a
+/// [CustomPainter]'s [Canvas] may be the same as that used by other widgets
+/// (including other [CustomPaint] widgets).
+///
+/// This is mostly unnoticeable, except when using unusual [BlendMode]s. For
+/// example, trying to use [BlendMode.dstOut] to "punch a hole" through a
+/// previously-drawn image may erase more than was intended, because previous
+/// widgets will have been painted onto the same canvas.
+///
+/// To avoid this issue, consider using [Canvas.saveLayer] and
+/// [Canvas.restore] when using such blend modes. Creating new layers is
+/// relatively expensive, however, and should be done sparingly to avoid
+/// introducing jank.
 ///
 /// See also:
 ///
@@ -278,7 +293,7 @@ abstract class CustomPainter extends Listenable {
 /// the accessibility of applications.
 ///
 /// Implement [CustomPainter.semanticsBuilder] to build the semantic
-/// description of the whole picture drawn by a [CustomPaint], rather that one
+/// description of the whole picture drawn by a [CustomPaint], rather than one
 /// particular rectangle.
 ///
 /// See also:
@@ -287,18 +302,14 @@ abstract class CustomPainter extends Listenable {
 ///  * [CustomPainter], which creates instances of this class.
 @immutable
 class CustomPainterSemantics {
-
   /// Creates semantics information describing a rectangle on a canvas.
-  ///
-  /// Arguments `rect` and `properties` must not be null.
   const CustomPainterSemantics({
     this.key,
     required this.rect,
     required this.properties,
     this.transform,
     this.tags,
-  }) : assert(rect != null),
-       assert(properties != null);
+  });
 
   /// Identifies this object in a list of siblings.
   ///
@@ -374,8 +385,7 @@ class RenderCustomPaint extends RenderProxyBox {
     this.isComplex = false,
     this.willChange = false,
     RenderBox? child,
-  }) : assert(preferredSize != null),
-       _painter = painter,
+  }) : _painter = painter,
        _foregroundPainter = foregroundPainter,
        _preferredSize = preferredSize,
        super(child);
@@ -398,8 +408,9 @@ class RenderCustomPaint extends RenderProxyBox {
   ///
   /// If the new value is null, then there is no background custom painter.
   set painter(CustomPainter? value) {
-    if (_painter == value)
+    if (_painter == value) {
       return;
+    }
     final CustomPainter? oldPainter = _painter;
     _painter = value;
     _didUpdatePainter(_painter, oldPainter);
@@ -423,8 +434,9 @@ class RenderCustomPaint extends RenderProxyBox {
   ///
   /// If the new value is null, then there is no foreground custom painter.
   set foregroundPainter(CustomPainter? value) {
-    if (_foregroundPainter == value)
+    if (_foregroundPainter == value) {
       return;
+    }
     final CustomPainter? oldPainter = _foregroundPainter;
     _foregroundPainter = value;
     _didUpdatePainter(_foregroundPainter, oldPainter);
@@ -448,8 +460,9 @@ class RenderCustomPaint extends RenderProxyBox {
     // Check if we need to rebuild semantics.
     if (newPainter == null) {
       assert(oldPainter != null); // We should be called only for changes.
-      if (attached)
+      if (attached) {
         markNeedsSemanticsUpdate();
+      }
     } else if (oldPainter == null ||
         newPainter.runtimeType != oldPainter.runtimeType ||
         newPainter.shouldRebuildSemantics(oldPainter)) {
@@ -467,9 +480,9 @@ class RenderCustomPaint extends RenderProxyBox {
   Size get preferredSize => _preferredSize;
   Size _preferredSize;
   set preferredSize(Size value) {
-    assert(value != null);
-    if (preferredSize == value)
+    if (preferredSize == value) {
       return;
+    }
     _preferredSize = value;
     markNeedsLayout();
   }
@@ -479,13 +492,50 @@ class RenderCustomPaint extends RenderProxyBox {
   /// The compositor contains a raster cache that holds bitmaps of layers in
   /// order to avoid the cost of repeatedly rendering those layers on each
   /// frame. If this flag is not set, then the compositor will apply its own
-  /// heuristics to decide whether the this layer is complex enough to benefit
-  /// from caching.
+  /// heuristics to decide whether the layer containing this render object is
+  /// complex enough to benefit from caching.
   bool isComplex;
 
   /// Whether the raster cache should be told that this painting is likely
   /// to change in the next frame.
+  ///
+  /// This hint tells the compositor not to cache the layer containing this
+  /// render object because the cache will not be used in the future. If this
+  /// hint is not set, the compositor will apply its own heuristics to decide
+  /// whether this layer is likely to be reused in the future.
   bool willChange;
+
+  @override
+  double computeMinIntrinsicWidth(double height) {
+    if (child == null) {
+      return preferredSize.width.isFinite ? preferredSize.width : 0;
+    }
+    return super.computeMinIntrinsicWidth(height);
+  }
+
+  @override
+  double computeMaxIntrinsicWidth(double height) {
+    if (child == null) {
+      return preferredSize.width.isFinite ? preferredSize.width : 0;
+    }
+    return super.computeMaxIntrinsicWidth(height);
+  }
+
+  @override
+  double computeMinIntrinsicHeight(double width) {
+    if (child == null) {
+      return preferredSize.height.isFinite ? preferredSize.height : 0;
+    }
+    return super.computeMinIntrinsicHeight(width);
+  }
+
+  @override
+  double computeMaxIntrinsicHeight(double width) {
+    if (child == null) {
+      return preferredSize.height.isFinite ? preferredSize.height : 0;
+    }
+    return super.computeMaxIntrinsicHeight(width);
+  }
 
   @override
   void attach(PipelineOwner owner) {
@@ -503,8 +553,9 @@ class RenderCustomPaint extends RenderProxyBox {
 
   @override
   bool hitTestChildren(BoxHitTestResult result, { required Offset position }) {
-    if (_foregroundPainter != null && (_foregroundPainter!.hitTest(position) ?? false))
+    if (_foregroundPainter != null && (_foregroundPainter!.hitTest(position) ?? false)) {
       return true;
+    }
     return super.hitTestChildren(result, position: position);
   }
 
@@ -531,8 +582,9 @@ class RenderCustomPaint extends RenderProxyBox {
       debugPreviousCanvasSaveCount = canvas.getSaveCount();
       return true;
     }());
-    if (offset != Offset.zero)
+    if (offset != Offset.zero) {
       canvas.translate(offset.dx, offset.dy);
+    }
     painter.paint(canvas, size);
     assert(() {
       // This isn't perfect. For example, we can't catch the case of
@@ -549,21 +601,22 @@ class RenderCustomPaint extends RenderProxyBox {
             'The $painter custom painter called canvas.save() or canvas.saveLayer() at least '
             '${debugNewCanvasSaveCount - debugPreviousCanvasSaveCount} more '
             'time${debugNewCanvasSaveCount - debugPreviousCanvasSaveCount == 1 ? '' : 's' } '
-            'than it called canvas.restore().'
+            'than it called canvas.restore().',
           ),
           ErrorDescription('This leaves the canvas in an inconsistent state and will probably result in a broken display.'),
-          ErrorHint('You must pair each call to save()/saveLayer() with a later matching call to restore().')
+          ErrorHint('You must pair each call to save()/saveLayer() with a later matching call to restore().'),
         ]);
       }
       if (debugNewCanvasSaveCount < debugPreviousCanvasSaveCount) {
         throw FlutterError.fromParts(<DiagnosticsNode>[
-          ErrorSummary('The $painter custom painter called canvas.restore() '
+          ErrorSummary(
+            'The $painter custom painter called canvas.restore() '
             '${debugPreviousCanvasSaveCount - debugNewCanvasSaveCount} more '
             'time${debugPreviousCanvasSaveCount - debugNewCanvasSaveCount == 1 ? '' : 's' } '
-            'than it called canvas.save() or canvas.saveLayer().'
+            'than it called canvas.save() or canvas.saveLayer().',
           ),
           ErrorDescription('This leaves the canvas in an inconsistent state and will result in a broken display.'),
-          ErrorHint('You should only call restore() if you first called save() or saveLayer().')
+          ErrorHint('You should only call restore() if you first called save() or saveLayer().'),
         ]);
       }
       return debugNewCanvasSaveCount == debugPreviousCanvasSaveCount;
@@ -585,10 +638,12 @@ class RenderCustomPaint extends RenderProxyBox {
   }
 
   void _setRasterCacheHints(PaintingContext context) {
-    if (isComplex)
+    if (isComplex) {
       context.setIsComplexHint();
-    if (willChange)
+    }
+    if (willChange) {
       context.setWillChangeHint();
+    }
   }
 
   /// Builds semantics for the picture drawn by [painter].
@@ -622,8 +677,8 @@ class RenderCustomPaint extends RenderProxyBox {
         throw FlutterError.fromParts(<DiagnosticsNode>[
           ErrorSummary(
             '$runtimeType does not have a child widget but received a non-empty list of child SemanticsNode:\n'
-            '${children.join('\n')}'
-          )
+            '${children.join('\n')}',
+          ),
         ]);
       }
       return true;
@@ -711,14 +766,15 @@ class RenderCustomPaint extends RenderProxyBox {
     int newChildrenBottom = newChildSemantics.length - 1;
     int oldChildrenBottom = oldSemantics.length - 1;
 
-    final List<SemanticsNode?> newChildren = List<SemanticsNode?>.filled(newChildSemantics.length, null, growable: false);
+    final List<SemanticsNode?> newChildren = List<SemanticsNode?>.filled(newChildSemantics.length, null);
 
     // Update the top of the list.
     while ((oldChildrenTop <= oldChildrenBottom) && (newChildrenTop <= newChildrenBottom)) {
       final SemanticsNode oldChild = oldSemantics[oldChildrenTop];
       final CustomPainterSemantics newSemantics = newChildSemantics[newChildrenTop];
-      if (!_canUpdateSemanticsChild(oldChild, newSemantics))
+      if (!_canUpdateSemanticsChild(oldChild, newSemantics)) {
         break;
+      }
       final SemanticsNode newChild = _updateSemanticsChild(oldChild, newSemantics);
       newChildren[newChildrenTop] = newChild;
       newChildrenTop += 1;
@@ -729,8 +785,9 @@ class RenderCustomPaint extends RenderProxyBox {
     while ((oldChildrenTop <= oldChildrenBottom) && (newChildrenTop <= newChildrenBottom)) {
       final SemanticsNode oldChild = oldSemantics[oldChildrenBottom];
       final CustomPainterSemantics newChild = newChildSemantics[newChildrenBottom];
-      if (!_canUpdateSemanticsChild(oldChild, newChild))
+      if (!_canUpdateSemanticsChild(oldChild, newChild)) {
         break;
+      }
       oldChildrenBottom -= 1;
       newChildrenBottom -= 1;
     }
@@ -742,8 +799,9 @@ class RenderCustomPaint extends RenderProxyBox {
       oldKeyedChildren = <Key, SemanticsNode>{};
       while (oldChildrenTop <= oldChildrenBottom) {
         final SemanticsNode oldChild = oldSemantics[oldChildrenTop];
-        if (oldChild.key != null)
+        if (oldChild.key != null) {
           oldKeyedChildren[oldChild.key!] = oldChild;
+        }
         oldChildrenTop += 1;
       }
     }
@@ -831,11 +889,17 @@ class RenderCustomPaint extends RenderProxyBox {
     if (properties.checked != null) {
       config.isChecked = properties.checked;
     }
+    if (properties.mixed != null) {
+      config.isCheckStateMixed = properties.mixed;
+    }
     if (properties.selected != null) {
       config.isSelected = properties.selected!;
     }
     if (properties.button != null) {
       config.isButton = properties.button!;
+    }
+    if (properties.expanded != null) {
+      config.isExpanded = properties.expanded;
     }
     if (properties.link != null) {
       config.isLink = properties.link!;
@@ -845,6 +909,9 @@ class RenderCustomPaint extends RenderProxyBox {
     }
     if (properties.slider != null) {
       config.isSlider = properties.slider!;
+    }
+    if (properties.keyboardKey != null) {
+      config.isKeyboardKey = properties.keyboardKey!;
     }
     if (properties.readOnly != null) {
       config.isReadOnly = properties.readOnly!;
@@ -960,6 +1027,9 @@ class RenderCustomPaint extends RenderProxyBox {
     if (properties.onSetSelection != null) {
       config.onSetSelection = properties.onSetSelection;
     }
+    if (properties.onSetText != null) {
+      config.onSetText = properties.onSetText;
+    }
     if (properties.onDidGainAccessibilityFocus != null) {
       config.onDidGainAccessibilityFocus = properties.onDidGainAccessibilityFocus;
     }
@@ -982,5 +1052,15 @@ class RenderCustomPaint extends RenderProxyBox {
       ..tags = newSemantics.tags;
 
     return newChild;
+  }
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(MessageProperty('painter', '$painter'));
+    properties.add(MessageProperty('foregroundPainter', '$foregroundPainter', level: foregroundPainter != null ? DiagnosticLevel.info : DiagnosticLevel.fine));
+    properties.add(DiagnosticsProperty<Size>('preferredSize', preferredSize, defaultValue: Size.zero));
+    properties.add(DiagnosticsProperty<bool>('isComplex', isComplex, defaultValue: false));
+    properties.add(DiagnosticsProperty<bool>('willChange', willChange, defaultValue: false));
   }
 }

@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 @immutable
 class ColorPicker extends StatelessWidget {
   const ColorPicker({
+    super.key,
     required this.colors,
     required this.selectedColor,
     this.onColorSelection,
@@ -26,9 +27,7 @@ class ColorPicker extends StatelessWidget {
           color: color,
           selected: color == selectedColor,
           onTap: () {
-            if (onColorSelection != null) {
-              onColorSelection!(color);
-            }
+            onColorSelection?.call(color);
           },
         );
       }).toList(),
@@ -47,7 +46,7 @@ class _ColorPickerSwatch extends StatelessWidget {
 
   final Color color;
   final bool selected;
-  final Function? onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build (BuildContext context) {
@@ -58,9 +57,7 @@ class _ColorPickerSwatch extends StatelessWidget {
       child: RawMaterialButton(
         fillColor: color,
         onPressed: () {
-          if (onTap != null) {
-            onTap!();
-          }
+          onTap?.call();
         },
         child: !selected ? null : const Icon(
           Icons.check,

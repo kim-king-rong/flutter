@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.9
-
 import 'dart:io';
 import 'package:path/path.dart' as path;
 
@@ -19,7 +17,7 @@ void main() {
   print('test/ contains $testGlobals libraries with global usage');
 }
 
-final RegExp globalImport = RegExp('import.*globals.dart\' as globals;');
+final RegExp globalImport = RegExp("import.*globals.dart' as globals;");
 
 int countGlobalImports(Directory directory) {
   int count = 0;
@@ -27,7 +25,7 @@ int countGlobalImports(Directory directory) {
     if (!file.path.endsWith('.dart') || file is! File) {
       continue;
     }
-    final bool hasImport = (file as File).readAsLinesSync().any((String line) {
+    final bool hasImport = file.readAsLinesSync().any((String line) {
       return globalImport.hasMatch(line);
     });
     if (hasImport) {

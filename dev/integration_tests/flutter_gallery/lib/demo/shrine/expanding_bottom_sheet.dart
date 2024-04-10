@@ -3,13 +3,12 @@
 // found in the LICENSE file.
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:scoped_model/scoped_model.dart';
 
-import 'package:flutter_gallery/demo/shrine/colors.dart';
-import 'package:flutter_gallery/demo/shrine/model/app_state_model.dart';
-import 'package:flutter_gallery/demo/shrine/model/product.dart';
-import 'package:flutter_gallery/demo/shrine/shopping_cart.dart';
+import 'colors.dart';
+import 'model/app_state_model.dart';
+import 'model/product.dart';
+import 'shopping_cart.dart';
 
 // These curves define the emphasized easing curve.
 const Cubic _kAccelerateCurve = Cubic(0.548, 0.0, 0.757, 0.464);
@@ -25,16 +24,15 @@ const double _kCornerRadius = 24.0;
 const double _kWidthForCartIcon = 64.0;
 
 class ExpandingBottomSheet extends StatefulWidget {
-  const ExpandingBottomSheet({Key? key, required this.hideController})
-      : super(key: key);
+  const ExpandingBottomSheet({super.key, required this.hideController});
 
   final AnimationController hideController;
 
   @override
-  _ExpandingBottomSheetState createState() => _ExpandingBottomSheetState();
+  ExpandingBottomSheetState createState() => ExpandingBottomSheetState();
 
-  static _ExpandingBottomSheetState? of(BuildContext context, {bool isNullOk = false}) {
-    final _ExpandingBottomSheetState? result = context.findAncestorStateOfType<_ExpandingBottomSheetState>();
+  static ExpandingBottomSheetState? of(BuildContext context, {bool isNullOk = false}) {
+    final ExpandingBottomSheetState? result = context.findAncestorStateOfType<ExpandingBottomSheetState>();
     if (isNullOk || result != null) {
       return result;
     }
@@ -98,7 +96,7 @@ double _getPeakPoint({required double begin, required double end}) {
   return begin + (end - begin) * _kPeakVelocityProgress;
 }
 
-class _ExpandingBottomSheetState extends State<ExpandingBottomSheet> with TickerProviderStateMixin {
+class ExpandingBottomSheetState extends State<ExpandingBottomSheet> with TickerProviderStateMixin {
   final GlobalKey _expandingBottomSheetKey = GlobalKey(debugLabel: 'Expanding bottom sheet');
 
   // The width of the Material, calculated by _widthFor() & based on the number
@@ -172,7 +170,7 @@ class _ExpandingBottomSheetState extends State<ExpandingBottomSheet> with Ticker
       ).animate(
         CurvedAnimation(
           parent: _controller.view,
-          curve: const Interval(0.434, 1.0, curve: Curves.linear), // not used
+          curve: const Interval(0.434, 1.0), // not used
           // only the reverseCurve will be used
           reverseCurve: Interval(0.434, 1.0, curve: Curves.fastOutSlowIn.flipped),
         ),
@@ -223,18 +221,13 @@ class _ExpandingBottomSheetState extends State<ExpandingBottomSheet> with Ticker
   // Returns the correct width of the ExpandingBottomSheet based on the number of
   // products in the cart.
   double _widthFor(int numProducts) {
-    switch (numProducts) {
-      case 0:
-        return _kWidthForCartIcon;
-      case 1:
-        return 136.0;
-      case 2:
-        return 192.0;
-      case 3:
-        return 248.0;
-      default:
-        return 278.0;
-    }
+    return switch (numProducts) {
+      0 => _kWidthForCartIcon,
+      1 => 136.0,
+      2 => 192.0,
+      3 => 248.0,
+      _ => 278.0,
+    };
   }
 
   // Returns true if the cart is open or opening and false otherwise.
@@ -278,17 +271,17 @@ class _ExpandingBottomSheetState extends State<ExpandingBottomSheet> with Ticker
               children: <Widget>[
                 AnimatedPadding(
                   padding: _cartPaddingFor(numProducts),
-                  child: const Icon(Icons.shopping_cart),
                   duration: const Duration(milliseconds: 225),
+                  child: const Icon(Icons.shopping_cart),
                 ),
                 Container(
                   // Accounts for the overflow number
                   width: numProducts > 3 ? _width - 94.0 : _width - 64.0,
                   height: _kCartHeight,
                   padding: const EdgeInsets.symmetric(vertical: 8.0),
-                  child: ProductThumbnailRow(),
+                  child: const ProductThumbnailRow(),
                 ),
-                ExtraProductsNumber(),
+                const ExtraProductsNumber(),
               ],
             ),
           ],
@@ -300,7 +293,7 @@ class _ExpandingBottomSheetState extends State<ExpandingBottomSheet> with Ticker
   Widget _buildShoppingCartPage() {
     return Opacity(
       opacity: _cartOpacityAnimation.value,
-      child: ShoppingCartPage(),
+      child: const ShoppingCartPage(),
     );
   }
 
@@ -324,11 +317,11 @@ class _ExpandingBottomSheetState extends State<ExpandingBottomSheet> with Ticker
     return Semantics(
       button: true,
       value: 'Shopping cart, $totalCartQuantity items',
-      child: Container(
+      child: SizedBox(
         width: _widthAnimation.value,
         height: _heightAnimation.value,
         child: Material(
-          animationDuration: const Duration(milliseconds: 0),
+          animationDuration: Duration.zero,
           shape: BeveledRectangleBorder(
             borderRadius: BorderRadius.only(
               topLeft: Radius.circular(_shapeAnimation.value),
@@ -349,7 +342,7 @@ class _ExpandingBottomSheetState extends State<ExpandingBottomSheet> with Ticker
     _slideAnimation = _getEmphasizedEasingAnimation(
       begin: const Offset(1.0, 0.0),
       peak: const Offset(_kPeakVelocityProgress, 0.0),
-      end: const Offset(0.0, 0.0),
+      end: Offset.zero,
       isForward: widget.hideController.status == AnimationStatus.forward,
       parent: widget.hideController,
     );
@@ -362,14 +355,12 @@ class _ExpandingBottomSheetState extends State<ExpandingBottomSheet> with Ticker
 
   // Closes the cart if the cart is open, otherwise exits the app (this should
   // only be relevant for Android).
-  Future<bool> _onWillPop() async {
-    if (!_isOpen) {
-      await SystemNavigator.pop();
-      return true;
+  void _handlePopInvoked(bool didPop) {
+    if (didPop) {
+      return;
     }
 
     close();
-    return true;
   }
 
   @override
@@ -378,10 +369,10 @@ class _ExpandingBottomSheetState extends State<ExpandingBottomSheet> with Ticker
       key: _expandingBottomSheetKey,
       duration: const Duration(milliseconds: 225),
       curve: Curves.easeInOut,
-      vsync: this,
       alignment: FractionalOffset.topLeft,
-      child: WillPopScope(
-        onWillPop: _onWillPop,
+      child: PopScope(
+        canPop: !_isOpen,
+        onPopInvoked: _handlePopInvoked,
         child: AnimatedBuilder(
           animation: widget.hideController,
           builder: _buildSlideAnimation,
@@ -404,8 +395,10 @@ class _ExpandingBottomSheetState extends State<ExpandingBottomSheet> with Ticker
 }
 
 class ProductThumbnailRow extends StatefulWidget {
+  const ProductThumbnailRow({super.key});
+
   @override
-  _ProductThumbnailRowState createState() => _ProductThumbnailRowState();
+  State<ProductThumbnailRow> createState() => _ProductThumbnailRowState();
 }
 
 class _ProductThumbnailRowState extends State<ProductThumbnailRow> {
@@ -448,7 +441,7 @@ class _ProductThumbnailRowState extends State<ProductThumbnailRow> {
     );
 
     final Animation<double> opacity = CurvedAnimation(
-      curve: const Interval(0.33, 1.0, curve: Curves.linear),
+      curve: const Interval(0.33, 1.0),
       parent: animation,
     );
 
@@ -511,6 +504,8 @@ class _ProductThumbnailRowState extends State<ProductThumbnailRow> {
 }
 
 class ExtraProductsNumber extends StatelessWidget {
+  const ExtraProductsNumber({super.key});
+
   // Calculates the number to be displayed at the end of the row if there are
   // more than three products in the cart. This calculates overflow products,
   // including their duplicates (but not duplicates of products shown as
@@ -531,17 +526,16 @@ class ExtraProductsNumber extends StatelessWidget {
   }
 
   Widget _buildOverflow(AppStateModel model, BuildContext context) {
-    if (model.productsInCart.length <= 3)
+    if (model.productsInCart.length <= 3) {
       return Container();
+    }
 
     final int numOverflowProducts = _calculateOverflow(model);
     // Maximum of 99 so padding doesn't get messy.
     final int displayedOverflowProducts = numOverflowProducts <= 99 ? numOverflowProducts : 99;
-    return Container(
-      child: Text(
-        '+$displayedOverflowProducts',
-        style: Theme.of(context).primaryTextTheme.button,
-      ),
+    return Text(
+      '+$displayedOverflowProducts',
+      style: Theme.of(context).primaryTextTheme.labelLarge,
     );
   }
 
@@ -554,7 +548,7 @@ class ExtraProductsNumber extends StatelessWidget {
 }
 
 class ProductThumbnail extends StatelessWidget {
-  const ProductThumbnail(this.animation, this.opacityAnimation, this.product);
+  const ProductThumbnail(this.animation, this.opacityAnimation, this.product, {super.key});
 
   final Animation<double> animation;
   final Animation<double> opacityAnimation;

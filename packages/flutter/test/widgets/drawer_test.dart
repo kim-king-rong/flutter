@@ -4,12 +4,10 @@
 
 import 'dart:ui';
 
-import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart' show DragStartBehavior;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:flutter/widgets.dart';
-import 'package:flutter/gestures.dart' show DragStartBehavior;
+import 'package:flutter_test/flutter_test.dart';
 
 import 'semantics_tester.dart';
 
@@ -84,7 +82,6 @@ void main() {
     final TestGesture gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
     // Start out of hoverTarget
     await gesture.addPointer(location: const Offset(100, 100));
-    addTearDown(gesture.removePointer);
 
     await tester.pumpWidget(
       MaterialApp(
@@ -275,11 +272,9 @@ void main() {
                   ],
                 ),
               ),
-              body: Container(
-                child: TextButton(
-                  child: const Text('button'),
-                  onPressed: () { buttonPressed = true; },
-                ),
+              body: TextButton(
+                child: const Text('button'),
+                onPressed: () { buttonPressed = true; },
               ),
             );
           },

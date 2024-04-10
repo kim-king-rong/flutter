@@ -5,8 +5,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../rendering/mock_canvas.dart';
-
 void main() {
   testWidgets('Theme.wrap()', (WidgetTester tester) async {
     const Color primaryColor = Color(0xFF00FF00);
@@ -93,12 +91,13 @@ void main() {
     expect(containerColor(), isNot(primaryColor));
   });
 
-  testWidgets('PopupMenuTheme.wrap()', (WidgetTester tester) async {
+  testWidgets('Material2 - PopupMenuTheme.wrap()', (WidgetTester tester) async {
     const double menuFontSize = 24;
     const Color menuTextColor = Color(0xFF0000FF);
 
     Widget buildFrame() {
       return MaterialApp(
+        theme: ThemeData(useMaterial3: false),
         home: Scaffold(
           body: PopupMenuTheme(
             data: const PopupMenuThemeData(
@@ -140,6 +139,58 @@ void main() {
     expect(itemTextStyle('One').color, menuTextColor);
     expect(itemTextStyle('Two').fontSize, menuFontSize);
     expect(itemTextStyle('Two').color, menuTextColor);
+
+    // Dismiss the menu
+    await tester.tap(find.text('One'));
+    await tester.pumpAndSettle(); // menu route animation
+  });
+
+  testWidgets('Material3 - PopupMenuTheme.wrap()', (WidgetTester tester) async {
+    const TextStyle textStyle = TextStyle(fontSize: 24.0, color: Color(0xFF0000FF));
+
+    Widget buildFrame() {
+      return MaterialApp(
+        home: Scaffold(
+          body: PopupMenuTheme(
+            data: const PopupMenuThemeData(
+              // The menu route's elevation, shape, and color are defined by the
+              // current context, so they're not affected by ThemeData.captureAll().
+              labelTextStyle: MaterialStatePropertyAll<TextStyle>(textStyle),
+            ),
+            child: Center(
+              child: PopupMenuButton<int>(
+                // The appearance of the menu items' text is defined by the
+                // PopupMenuTheme defined above. Popup menus use
+                // InheritedTheme.captureAll() by default.
+                child: const Text('show popupmenu'),
+                onSelected: (int result) { },
+                itemBuilder: (BuildContext context) {
+                  return const <PopupMenuEntry<int>>[
+                    PopupMenuItem<int>(value: 1, child: Text('One')),
+                    PopupMenuItem<int>(value: 2, child: Text('Two')),
+                  ];
+                },
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    TextStyle itemTextStyle(String text) {
+      return tester.widget<RichText>(
+        find.descendant(of: find.text(text), matching: find.byType(RichText)),
+      ).text.style!;
+    }
+
+    await tester.pumpWidget(buildFrame());
+
+    await tester.tap(find.text('show popupmenu'));
+    await tester.pumpAndSettle(); // menu route animation
+    expect(itemTextStyle('One').fontSize, textStyle.fontSize);
+    expect(itemTextStyle('One').color, textStyle.color);
+    expect(itemTextStyle('Two').fontSize, textStyle.fontSize);
+    expect(itemTextStyle('Two').color, textStyle.color);
 
     // Dismiss the menu
     await tester.tap(find.text('One'));
@@ -211,8 +262,8 @@ void main() {
     }
 
     Color bannerColor() {
-      return tester.widget<Container>(
-        find.descendant(of: find.byType(MaterialBanner), matching: find.byType(Container)).first,
+      return tester.widget<Material>(
+        find.descendant(of: find.byType(MaterialBanner), matching: find.byType(Material)).first,
       ).color!;
     }
 
@@ -342,14 +393,11 @@ void main() {
             ListTile(
               leading: Icon(Icons.computer, key: selectedIconKey),
               title: const Text('selected'),
-              enabled: true,
               selected: true,
             ),
             ListTile(
               leading: Icon(Icons.add, key: unselectedIconKey),
               title: const Text('unselected'),
-              enabled: true,
-              selected: false,
             ),
           ],
         ),
@@ -530,11 +578,11 @@ void main() {
     final Widget toggleButtons = Scaffold(
       body: Center(
         child: ToggleButtons(
+          isSelected: const <bool>[true, false],
           children: const <Widget>[
             Text('selected'),
             Text('unselected'),
           ],
-          isSelected: const <bool>[true, false],
           onPressed: (int index) { },
         ),
       ),
@@ -610,99 +658,5 @@ void main() {
     await tester.pumpAndSettle(); // route animation
     expect(getTextColor('selected'), isNot(selectedButtonColor));
     expect(getTextColor('unselected'), isNot(buttonColor));
-
   });
-
-  testWidgets('ButtonTheme.wrap()', (WidgetTester tester) async {
-    const Color buttonColor = Color(0xFF00FF00);
-    const Color disabledButtonColor = Color(0xFFFF0000);
-
-    final Widget buttons = Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            const RaisedButton(child: Text('disabled'), onPressed: null),
-            RaisedButton(child: const Text('enabled'), onPressed: () { }),
-          ],
-        ),
-      ),
-    );
-
-    late BuildContext navigatorContext;
-
-    Widget buildFrame() {
-      return MaterialApp(
-        home: Scaffold(
-          body: ButtonTheme.fromButtonThemeData(
-            data: const ButtonThemeData(
-              buttonColor: buttonColor,
-              disabledColor: disabledButtonColor,
-            ),
-            child: Builder( // Introduce a context so the shadow ButtonTheme is visible to captureAll().
-              builder: (BuildContext context) {
-                navigatorContext = context;
-                return Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: <Widget>[
-                      RaisedButton(
-                        child: const Text('push unwrapped'),
-                        onPressed: () {
-                          Navigator.of(context).push<void>(
-                            MaterialPageRoute<void>(
-                              // The slider will see the default ButtonTheme when built.
-                              builder: (BuildContext _) => buttons,
-                            ),
-                          );
-                        },
-                      ),
-                      RaisedButton(
-                        child: const Text('push wrapped'),
-                        onPressed: () {
-                          Navigator.of(context).push<void>(
-                            MaterialPageRoute<void>(
-                              // Capture the shadow toggleButtons.
-                              builder: (BuildContext _) => InheritedTheme.captureAll(context, buttons),
-                            ),
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ),
-        ),
-      );
-    }
-
-    Color getButtonColor(String text) {
-      return tester.widget<Material>(
-        find.descendant(
-          of: find.widgetWithText(RawMaterialButton, text),
-          matching: find.byType(Material),
-        ),
-      ).color!;
-    }
-
-    await tester.pumpWidget(buildFrame());
-
-    // Show a route which contains toggleButtons.
-    await tester.tap(find.text('push wrapped'));
-    await tester.pumpAndSettle(); // route animation
-    expect(getButtonColor('disabled'), disabledButtonColor);
-    expect(getButtonColor('enabled'), buttonColor);
-
-    Navigator.of(navigatorContext).pop();
-    await tester.pumpAndSettle(); // route animation
-
-    await tester.tap(find.text('push unwrapped'));
-    await tester.pumpAndSettle(); // route animation
-    expect(getButtonColor('disabled'), isNot(disabledButtonColor));
-    expect(getButtonColor('enabled'), isNot(buttonColor));
-
-  });
-
 }

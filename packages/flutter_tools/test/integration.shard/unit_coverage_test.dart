@@ -10,7 +10,7 @@ import '../src/common.dart';
 import 'test_utils.dart';
 
 void main() {
-  Directory tempDir;
+  late Directory tempDir;
 
   setUp(() async {
     tempDir = createResolvedTempDirectorySync('unit_coverage_test.');

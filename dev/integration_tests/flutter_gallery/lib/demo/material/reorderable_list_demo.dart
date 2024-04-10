@@ -2,9 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 
 import '../../gallery/demo.dart';
 
@@ -20,12 +18,12 @@ enum _ReorderableListType {
 }
 
 class ReorderableListDemo extends StatefulWidget {
-  const ReorderableListDemo({ Key? key }) : super(key: key);
+  const ReorderableListDemo({ super.key });
 
   static const String routeName = '/material/reorderable-list';
 
   @override
-  _ListDemoState createState() => _ListDemoState();
+  State<ReorderableListDemo> createState() => _ListDemoState();
 }
 
 class _ListItem {
@@ -39,7 +37,7 @@ class _ListItem {
 class _ListDemoState extends State<ReorderableListDemo> {
   static final GlobalKey<ScaffoldState> scaffoldKey = GlobalKey<ScaffoldState>();
 
-  PersistentBottomSheetController<void>? _bottomSheet;
+  PersistentBottomSheetController? _bottomSheet;
   _ReorderableListType? _itemType = _ReorderableListType.threeLine;
   bool? _reverse = false;
   bool _reverseSort = false;
@@ -73,7 +71,7 @@ class _ListDemoState extends State<ReorderableListDemo> {
 
   void _showConfigurationSheet() {
     setState(() {
-      _bottomSheet = scaffoldKey.currentState!.showBottomSheet<void>((BuildContext bottomSheetContext) {
+      _bottomSheet = scaffoldKey.currentState!.showBottomSheet((BuildContext bottomSheetContext) {
         return DecoratedBox(
           decoration: const BoxDecoration(
             border: Border(top: BorderSide(color: Colors.black26)),
@@ -145,23 +143,21 @@ class _ListDemoState extends State<ReorderableListDemo> {
           subtitle: secondary,
           secondary: const Icon(Icons.drag_handle),
         );
-        break;
       case _ReorderableListType.horizontalAvatar:
       case _ReorderableListType.verticalAvatar:
-        listTile = Container(
+        listTile = SizedBox(
           key: Key(item.value),
           height: 100.0,
           width: 100.0,
-          child: CircleAvatar(child: Text(item.value),
+          child: CircleAvatar(
             backgroundColor: Colors.green,
+            child: Text(item.value),
           ),
         );
-        break;
-      default:
+      case null:
         listTile = Container(
           key: Key(item.value),
         );
-        break;
     }
 
     return listTile;
@@ -209,10 +205,11 @@ class _ListDemoState extends State<ReorderableListDemo> {
       ),
       body: Scrollbar(
         child: ReorderableListView(
+          primary: true,
           header: _itemType != _ReorderableListType.threeLine
               ? Padding(
                   padding: const EdgeInsets.all(8.0),
-                  child: Text('Header of the list', style: Theme.of(context).textTheme.headline5))
+                  child: Text('Header of the list', style: Theme.of(context).textTheme.headlineSmall))
               : null,
           onReorder: _onReorder,
           reverse: _reverse!,

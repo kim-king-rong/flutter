@@ -6,6 +6,7 @@ import 'package:meta/meta.dart';
 
 import '../base/analyze_size.dart';
 import '../base/common.dart';
+import '../base/os.dart';
 import '../build_info.dart';
 import '../cache.dart';
 import '../features.dart';
@@ -18,9 +19,16 @@ import 'build.dart';
 
 /// A command to build a windows desktop target through a build shell script.
 class BuildWindowsCommand extends BuildSubCommand {
-  BuildWindowsCommand({ bool verboseHelp = false }) {
+  BuildWindowsCommand({
+    required super.logger,
+    required OperatingSystemUtils operatingSystemUtils,
+    bool verboseHelp = false,
+  }) : _operatingSystemUtils = operatingSystemUtils,
+       super(verboseHelp: verboseHelp) {
     addCommonDesktopBuildOptions(verboseHelp: verboseHelp);
   }
+
+  final OperatingSystemUtils _operatingSystemUtils;
 
   @override
   final String name = 'windows';
@@ -37,21 +45,28 @@ class BuildWindowsCommand extends BuildSubCommand {
   String get description => 'Build a Windows desktop application.';
 
   @visibleForTesting
-  VisualStudio visualStudioOverride;
+  VisualStudio? visualStudioOverride;
 
   @override
   Future<FlutterCommandResult> runCommand() async {
     final FlutterProject flutterProject = FlutterProject.current();
     final BuildInfo buildInfo = await getBuildInfo();
     if (!featureFlags.isWindowsEnabled) {
-      throwToolExit('"build windows" is not currently supported.');
+      throwToolExit('"build windows" is not currently supported. To enable, run "flutter config --enable-windows-desktop".');
     }
     if (!globals.platform.isWindows) {
       throwToolExit('"build windows" only supported on Windows hosts.');
     }
+
+    final String defaultTargetPlatform = (_operatingSystemUtils.hostPlatform == HostPlatform.windows_arm64) ?
+            'windows-arm64' : 'windows-x64';
+    final TargetPlatform targetPlatform = getTargetPlatformForName(defaultTargetPlatform);
+
+    displayNullSafetyMode(buildInfo);
     await buildWindows(
       flutterProject.windows,
       buildInfo,
+      targetPlatform,
       target: targetFile,
       visualStudioOverride: visualStudioOverride,
       sizeAnalyzer: SizeAnalyzer(
@@ -59,6 +74,7 @@ class BuildWindowsCommand extends BuildSubCommand {
         logger: globals.logger,
         appFilenamePattern: 'app.so',
         flutterUsage: globals.flutterUsage,
+        analytics: analytics,
       ),
     );
     return FlutterCommandResult.success();

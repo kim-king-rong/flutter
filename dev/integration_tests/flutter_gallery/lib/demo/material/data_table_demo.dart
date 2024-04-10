@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 
 import '../../gallery/demo.dart';
 
@@ -79,7 +78,7 @@ class DessertDataSource extends DataTableSource {
     Dessert('Coconut slice and KitKat',             677, 41.0,  72,  8.5,  63, 12, 12),
   ];
 
-  void _sort<T>(Comparable<T> getField(Dessert d), bool ascending) {
+  void _sort<T>(Comparable<T> Function(Dessert d) getField, bool ascending) {
     _desserts.sort((Dessert a, Dessert b) {
       if (!ascending) {
         final Dessert c = a;
@@ -98,8 +97,9 @@ class DessertDataSource extends DataTableSource {
   @override
   DataRow? getRow(int index) {
     assert(index >= 0);
-    if (index >= _desserts.length)
+    if (index >= _desserts.length) {
       return null;
+    }
     final Dessert dessert = _desserts[index];
     return DataRow.byIndex(
       index: index,
@@ -135,18 +135,21 @@ class DessertDataSource extends DataTableSource {
   int get selectedRowCount => _selectedCount;
 
   void _selectAll(bool? checked) {
-    for (final Dessert dessert in _desserts)
+    for (final Dessert dessert in _desserts) {
       dessert.selected = checked;
+    }
     _selectedCount = checked! ? _desserts.length : 0;
     notifyListeners();
   }
 }
 
 class DataTableDemo extends StatefulWidget {
+  const DataTableDemo({super.key});
+
   static const String routeName = '/material/data-table';
 
   @override
-  _DataTableDemoState createState() => _DataTableDemoState();
+  State<DataTableDemo> createState() => _DataTableDemoState();
 }
 
 class _DataTableDemoState extends State<DataTableDemo> {
@@ -155,7 +158,7 @@ class _DataTableDemoState extends State<DataTableDemo> {
   bool _sortAscending = true;
   final DessertDataSource _dessertsDataSource = DessertDataSource();
 
-  void _sort<T>(Comparable<T> getField(Dessert d), int columnIndex, bool ascending) {
+  void _sort<T>(Comparable<T> Function(Dessert d) getField, int columnIndex, bool ascending) {
     _dessertsDataSource._sort<T>(getField, ascending);
     setState(() {
       _sortColumnIndex = columnIndex;
@@ -174,6 +177,7 @@ class _DataTableDemoState extends State<DataTableDemo> {
       ),
       body: Scrollbar(
         child: ListView(
+          primary: true,
           padding: const EdgeInsets.all(20.0),
           children: <Widget>[
             PaginatedDataTable(

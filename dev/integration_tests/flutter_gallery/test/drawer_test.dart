@@ -4,13 +4,14 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_gallery/gallery/app.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  final TestWidgetsFlutterBinding binding = TestWidgetsFlutterBinding.ensureInitialized() as TestWidgetsFlutterBinding;
-  if (binding is LiveTestWidgetsFlutterBinding)
+  final TestWidgetsFlutterBinding binding = TestWidgetsFlutterBinding.ensureInitialized();
+  if (binding is LiveTestWidgetsFlutterBinding) {
     binding.framePolicy = LiveTestWidgetsFlutterBindingFramePolicy.fullyLive;
+  }
 
   testWidgets('Flutter Gallery drawer item test', (WidgetTester tester) async {
     bool hasFeedback = false;
@@ -63,7 +64,7 @@ void main() {
     expect(app.themeMode, ThemeMode.system);
 
     // Verify density settings
-    expect(app.theme!.visualDensity, equals(const VisualDensity()));
+    expect(app.theme!.visualDensity, equals(VisualDensity.standard));
 
     // Popup the density menu: third menu button, choose 'Compact'
     await tester.tap(find.byIcon(Icons.arrow_drop_down).at(2));
@@ -81,7 +82,7 @@ void main() {
     ));
     await tester.pumpAndSettle();
     app = find.byType(MaterialApp).evaluate().first.widget as MaterialApp;
-    expect(app.theme!.visualDensity, equals(const VisualDensity()));
+    expect(app.theme!.visualDensity, equals(VisualDensity.standard));
 
     // Verify platform settings
     expect(app.theme!.platform, equals(TargetPlatform.android));
@@ -104,7 +105,7 @@ void main() {
     await tester.tap(find.text('Small'));
     await tester.pumpAndSettle();
     Size textSize = tester.getSize(find.text('Text size'));
-    expect(textSize, equals(const Size(116.0, 13.0)));
+    expect(textSize, equals(within(distance: 0.05, from: const Size(115.2, 13.0))));
 
     // Set font scale back to the default.
     await tester.tap(find.byIcon(Icons.arrow_drop_down).at(1));

@@ -2,9 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'package:flutter_test/flutter_test.dart';
+import 'dart:ui' as ui;
+
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   final LayerLink link = LayerLink();
@@ -36,7 +38,7 @@ void main() {
                   link: linkToUse ?? link,
                   targetAnchor: Alignment.center,
                   followerAnchor: Alignment.center,
-                  child: Container(key: key, height: 20.0, width: 20.0),
+                  child: SizedBox(key: key, height: 20.0, width: 20.0),
                 ),
               ),
             ],
@@ -52,6 +54,35 @@ void main() {
 
     await tester.pumpWidget(build(linkToUse: LayerLink()));
     expect(box.localToGlobal(Offset.zero), const Offset(118.0, 451.0));
+  });
+
+  testWidgets('LeaderLayer should not cause error', (WidgetTester tester) async {
+    final LayerLink link = LayerLink();
+
+    Widget buildWidget({
+      required double paddingLeft,
+      Color siblingColor = const Color(0xff000000),
+    }) {
+      return Directionality(
+        textDirection: TextDirection.ltr,
+        child: Stack(
+          children: <Widget>[
+            Padding(
+              padding: EdgeInsets.only(left: paddingLeft),
+              child: CompositedTransformTarget(
+                link: link,
+                child: RepaintBoundary(child: ClipRect(child: Container(color: const Color(0x00ff0000)))),
+              ),
+            ),
+            Positioned.fill(child: RepaintBoundary(child: ColoredBox(color: siblingColor))),
+          ],
+        ),
+      );
+    }
+
+    await tester.pumpWidget(buildWidget(paddingLeft: 10));
+    await tester.pumpWidget(buildWidget(paddingLeft: 0));
+    await tester.pumpWidget(buildWidget(paddingLeft: 0, siblingColor: const Color(0x0000ff00)));
   });
 
   group('Composited transforms - only offsets', () {
@@ -77,7 +108,7 @@ void main() {
                 link: link,
                 targetAnchor: targetAlignment,
                 followerAnchor: followerAlignment,
-                child: Container(key: key, height: 20.0, width: 20.0),
+                child: SizedBox(key: key, height: 20.0, width: 20.0),
               ),
             ),
           ],
@@ -120,7 +151,7 @@ void main() {
                 angle: 1.0, // radians
                 child: CompositedTransformTarget(
                   link: link,
-                  child: Container(key: key1, width: 80.0, height: 10.0),
+                  child: SizedBox(key: key1, width: 80.0, height: 10.0),
                 ),
               ),
             ),
@@ -133,7 +164,7 @@ void main() {
                   link: link,
                   targetAnchor: targetAlignment,
                   followerAnchor: followerAlignment,
-                  child: Container(key: key2, width: 40.0, height: 20.0),
+                  child: SizedBox(key: key2, width: 40.0, height: 20.0),
                 ),
               ),
             ),
@@ -185,7 +216,7 @@ void main() {
                 angle: 1.0, // radians
                 child: CompositedTransformTarget(
                   link: link,
-                  child: Container(key: key1, width: 80.0, height: 10.0),
+                  child: SizedBox(key: key1, width: 80.0, height: 10.0),
                 ),
               ),
             ),
@@ -206,7 +237,7 @@ void main() {
                           link: link,
                           targetAnchor: targetAlignment,
                           followerAnchor: followerAlignment,
-                          child: Container(key: key2, width: 40.0, height: 20.0),
+                          child: SizedBox(key: key2, width: 40.0, height: 20.0),
                         ),
                       ),
                     ),
@@ -263,7 +294,7 @@ void main() {
               top: 456.0,
               child: CompositedTransformTarget(
                 link: link,
-                child: Container(key: key1, height: 10.0, width: 10.0),
+                child: SizedBox(key: key1, height: 10.0, width: 10.0),
               ),
             ),
             CompositedTransformFollower(
@@ -272,7 +303,7 @@ void main() {
                 key: key2,
                 behavior: HitTestBehavior.opaque,
                 onTap: () { tapped = true; },
-                child: Container(key: key3, height: 2.0, width: 2.0),
+                child: SizedBox(key: key3, height: 2.0, width: 2.0),
               ),
             ),
           ],
@@ -295,10 +326,87 @@ void main() {
           final RenderBox box2 = key2.currentContext!.findRenderObject()! as RenderBox;
           expect(box2.size, const Size(2.0, 2.0));
           expect(tapped, isFalse);
-          await tester.tap(find.byKey(key3));
+          await tester.tap(find.byKey(key3), warnIfMissed: false); // the container itself is transparent to hits
           expect(tapped, isTrue);
         });
       }
     }
   });
+
+  testWidgets('Leader after Follower asserts', (WidgetTester tester) async {
+    final LayerLink link = LayerLink();
+    await tester.pumpWidget(
+      CompositedTransformFollower(
+        link: link,
+        child: CompositedTransformTarget(
+          link: link,
+          child: const SizedBox(height: 20, width: 20),
+        ),
+      ),
+    );
+
+    expect(
+      (tester.takeException() as AssertionError).message,
+      contains('LeaderLayer anchor must come before FollowerLayer in paint order'),
+    );
+  });
+
+  testWidgets(
+      '`FollowerLayer` (`CompositedTransformFollower`) has null pointer error when using with some kinds of `Layer`s',
+      (WidgetTester tester) async {
+    final LayerLink link = LayerLink();
+    await tester.pumpWidget(
+      CompositedTransformTarget(
+        link: link,
+        child: CompositedTransformFollower(
+          link: link,
+          child: const _CustomWidget(),
+        ),
+      ),
+    );
+  });
+}
+
+class _CustomWidget extends SingleChildRenderObjectWidget {
+  const _CustomWidget();
+
+  @override
+  _CustomRenderObject createRenderObject(BuildContext context) => _CustomRenderObject();
+
+  @override
+  void updateRenderObject(BuildContext context, _CustomRenderObject renderObject) {}
+}
+
+class _CustomRenderObject extends RenderProxyBox {
+  _CustomRenderObject({RenderBox? child}) : super(child);
+
+  @override
+  void paint(PaintingContext context, Offset offset) {
+    if (layer == null) {
+      layer = _CustomLayer(
+        computeSomething: _computeSomething,
+      );
+    } else {
+      (layer as _CustomLayer?)?.computeSomething = _computeSomething;
+    }
+
+    context.pushLayer(layer!, super.paint, Offset.zero);
+  }
+
+  void _computeSomething() {
+    // indeed, use `globalToLocal` to compute some useful data
+    globalToLocal(Offset.zero);
+  }
+}
+
+class _CustomLayer extends ContainerLayer {
+  _CustomLayer({required this.computeSomething});
+
+  VoidCallback computeSomething;
+
+  @override
+  void addToScene(ui.SceneBuilder builder) {
+    computeSomething(); // indeed, need to use result of this function
+    super.addToScene(builder);
+  }
 }

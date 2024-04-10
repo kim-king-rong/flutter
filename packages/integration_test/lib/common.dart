@@ -5,8 +5,28 @@
 import 'dart:async';
 import 'dart:convert';
 
+/// A callback to use with [integrationDriver].
+///
+/// The callback receives the name of screenshot passed to `binding.takeScreenshot(<name>)`,
+/// a PNG byte buffer representing the screenshot, and an optional `Map` of arguments.
+///
+/// The callback returns `true` if the test passes or `false` otherwise.
+///
+/// You can use this callback to store the bytes locally in a file or upload them to a service
+/// that compares the image against a gold or baseline version.
+///
+/// The optional `Map` of arguments can be passed from the
+/// `binding.takeScreenshot(<name>, <args>)` callsite in the integration test,
+/// and then the arguments can be used in the `onScreenshot` handler that is defined by
+/// the Flutter driver. This `Map` should only contain values that can be serialized
+/// to JSON.
+///
+/// Since the function is executed on the host driving the test, you can access any environment
+/// variable from it.
+typedef ScreenshotCallback = Future<bool> Function(String name, List<int> image, [Map<String, Object?>? args]);
+
 /// Classes shared between `integration_test.dart` and `flutter drive` based
-/// adoptor (ex: `integration_test_driver.dart`).
+/// adaptor (ex: `integration_test_driver.dart`).
 
 /// An object sent from integration_test back to the Flutter Driver in response to
 /// `request_data` command.
@@ -21,7 +41,7 @@ class Response {
       : _allTestsPassed = false;
 
   /// Constructor for failure response.
-  Response.toolException({String ex})
+  Response.toolException({String? ex})
       : _allTestsPassed = false,
         _failureDetails = <Failure>[Failure('ToolException', ex)];
 
@@ -30,39 +50,39 @@ class Response {
       : _allTestsPassed = false,
         _failureDetails = null;
 
-  final List<Failure> _failureDetails;
+  final List<Failure>? _failureDetails;
 
   final bool _allTestsPassed;
 
   /// The extra information to be added along side the test result.
-  Map<String, dynamic> data;
+  Map<String, dynamic>? data;
 
   /// Whether the test ran successfully or not.
   bool get allTestsPassed => _allTestsPassed;
 
   /// If the result are failures get the formatted details.
   String get formattedFailureDetails =>
-      _allTestsPassed ? '' : formatFailures(_failureDetails);
+      _allTestsPassed ? '' : formatFailures(_failureDetails!);
 
   /// Failure details as a list.
-  List<Failure> get failureDetails => _failureDetails;
+  List<Failure>? get failureDetails => _failureDetails;
 
   /// Serializes this message to a JSON map.
   String toJson() => json.encode(<String, dynamic>{
         'result': allTestsPassed.toString(),
         'failureDetails': _failureDetailsAsString(),
-        if (data != null) 'data': data
+        if (data != null) 'data': data,
       });
 
   /// Deserializes the result from JSON.
   static Response fromJson(String source) {
     final Map<String, dynamic> responseJson = json.decode(source) as Map<String, dynamic>;
-    if (responseJson['result'] as String == 'true') {
-      return Response.allTestsPassed(data: responseJson['data'] as Map<String, dynamic>);
+    if ((responseJson['result'] as String?) == 'true') {
+      return Response.allTestsPassed(data: responseJson['data'] as Map<String, dynamic>?);
     } else {
       return Response.someTestsFailed(
         _failureDetailsFromJson(responseJson['failureDetails'] as List<dynamic>),
-        data: responseJson['data'] as Map<String, dynamic>,
+        data: responseJson['data'] as Map<String, dynamic>?,
       );
     }
   }
@@ -78,7 +98,7 @@ class Response {
     for (final Failure failure in failureDetails) {
       sb.writeln('Failure in method: ${failure.methodName}');
       sb.writeln(failure.details);
-      sb.writeln('end of failure ${failureCount.toString()}\n\n');
+      sb.writeln('end of failure $failureCount\n\n');
       failureCount++;
     }
     return sb.toString();
@@ -106,48 +126,21 @@ class Response {
   }
 }
 
-/// Represents the result of running a test.
-class TestResult {
-  TestResult._(this.methodName);
+/// Representing a failure includes the method name and the failure details.
+class Failure {
+  /// Constructor requiring all fields during initialization.
+  Failure(this.methodName, this.details);
 
   /// The name of the test method which failed.
   final String methodName;
-}
 
-/// Represents successful execution of a test.
-class Success extends TestResult {
-  /// Constructor requiring all fields during initialization.
-  Success(String methodName) : super._(methodName);
-}
-
-/// Represents a test failure.
-class Failure extends TestResult {
-  /// Constructor requiring all fields during initialization.
-  ///
-  /// If [error] is passed, [errors] will be ignored.
-  Failure(String methodName, String details, {
-    Object error,
-    List<AsyncError> errors,
-  }) :
-    errors = error != null
-      ? <AsyncError>[AsyncError(error, StackTrace.fromString(details))]
-      : errors ?? <AsyncError>[],
-    super._(methodName);
-
-  /// Errors that were thrown during the test.
-  final List<AsyncError> errors;
-
-  /// The first error that was thrown during the test.
-  Object get error => errors.isEmpty ? null : errors.first.error;
-
-  /// The details of the first failure such as stack trace.
-  String get details => errors.isEmpty ? null : errors.first.stackTrace.toString();
+  /// The details of the failure such as stack trace.
+  final String? details;
 
   /// Serializes the object to JSON.
   String toJson() {
-    return json.encode(<String, String>{
+    return json.encode(<String, String?>{
       'methodName': methodName,
-      'error': error.toString(),
       'details': details,
     });
   }
@@ -158,7 +151,7 @@ class Failure extends TestResult {
   /// Decode a JSON string to create a Failure object.
   static Failure fromJsonString(String jsonString) {
     final Map<String, dynamic> failure = json.decode(jsonString) as Map<String, dynamic>;
-    return Failure(failure['methodName'] as String, failure['details'] as String);
+    return Failure(failure['methodName'] as String, failure['details'] as String?);
   }
 }
 
@@ -238,7 +231,7 @@ class DriverTestMessage {
 /// These commands are either commands that WebDriver can execute or used
 /// for the communication between `integration_test` and the driver test.
 enum WebDriverCommandType {
-  /// Acknowlegement for the previously sent message.
+  /// Acknowledgement for the previously sent message.
   ack,
 
   /// No further WebDriver commands is requested by the app-side tests.
@@ -260,9 +253,12 @@ class WebDriverCommand {
         values = <String, dynamic>{};
 
   /// Constructor for [WebDriverCommandType.noop] screenshot.
-  WebDriverCommand.screenshot(String screenshotName)
+  WebDriverCommand.screenshot(String screenshotName, [Map<String, Object?>? args])
       : type = WebDriverCommandType.screenshot,
-        values = <String, dynamic>{'screenshot_name': screenshotName};
+        values = <String, dynamic>{
+          'screenshot_name': screenshotName,
+          if (args != null) 'args': args,
+        };
 
   /// Type of the [WebDriverCommand].
   ///
@@ -289,16 +285,17 @@ class WebDriverCommand {
 ///
 /// Depending on the platform the communication between `integration_tests` and
 /// the `driver_tests` can be different.
-///
-/// For the web implementation [WebCallbackManager].
-/// For the io implementation [IOCallbackManager].
 abstract class CallbackManager {
   /// The callback function to response the driver side input.
   Future<Map<String, dynamic>> callback(
       Map<String, String> params, IntegrationTestResults testRunner);
 
-  /// Request to take a screenshot of the application.
-  Future<void> takeScreenshot(String screenshot);
+  /// Takes a screenshot of the application.
+  /// Returns the data that is sent back to the host.
+   Future<Map<String, dynamic>> takeScreenshot(String screenshot, [Map<String, Object?>? args]);
+
+  /// Android only. Converts the Flutter surface to an image view.
+  Future<void> convertFlutterSurfaceToImage();
 
   /// Cleanup and completers or locks used during the communication.
   void cleanup();
@@ -318,8 +315,11 @@ abstract class IntegrationTestResults {
   List<Failure> get failureMethodsDetails;
 
   /// The extra data for the reported result.
-  Map<String, dynamic> get reportData;
+  Map<String, dynamic>? get reportData;
 
-  /// Whether all the test methods completed succesfully.
+  /// Whether all the test methods completed successfully.
+  ///
+  /// Completes when the tests have finished. The boolean value will be true if
+  /// all tests have passed, and false otherwise.
   Completer<bool> get allTestsPassed;
 }

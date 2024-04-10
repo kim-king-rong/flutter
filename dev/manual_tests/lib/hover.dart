@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 void main() {
@@ -12,29 +11,11 @@ void main() {
   ));
 }
 
-class DemoButton extends StatelessWidget {
-  const DemoButton({this.name});
-
-  final String name;
-
-  void _handleOnPressed() {
-    print('Button $name pressed.');
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return TextButton(
-      onPressed: () => _handleOnPressed(),
-      child: Text(name),
-    );
-  }
-}
-
 class HoverDemo extends StatefulWidget {
-  const HoverDemo({Key key}) : super(key: key);
+  const HoverDemo({super.key});
 
   @override
-  _HoverDemoState createState() => _HoverDemoState();
+  State<HoverDemo> createState() => _HoverDemoState();
 }
 
 class _HoverDemoState extends State<HoverDemo> {
@@ -43,12 +24,12 @@ class _HoverDemoState extends State<HoverDemo> {
     final TextTheme textTheme = Theme.of(context).textTheme;
     final ButtonStyle overrideFocusColor = ButtonStyle(
       overlayColor: MaterialStateProperty.resolveWith<Color>((Set<MaterialState> states) {
-        return states.contains(MaterialState.focused) ? Colors.deepOrangeAccent : null;
+        return states.contains(MaterialState.focused) ? Colors.deepOrangeAccent : Colors.transparent;
       })
     );
 
     return DefaultTextStyle(
-      style: textTheme.headline4,
+      style: textTheme.headlineMedium!,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Hover Demo'),
@@ -66,13 +47,13 @@ class _HoverDemoState extends State<HoverDemo> {
                   children: <Widget>[
                     ElevatedButton(
                       onPressed: () => print('Button pressed.'),
-                      child: const Text('Button'),
                       style: overrideFocusColor,
+                      child: const Text('Button'),
                     ),
                     TextButton(
                       onPressed: () => print('Button pressed.'),
-                      child: const Text('Button'),
                       style: overrideFocusColor,
+                      child: const Text('Button'),
                     ),
                     IconButton(
                       onPressed: () => print('Button pressed'),
@@ -90,7 +71,6 @@ class _HoverDemoState extends State<HoverDemo> {
                 const Padding(
                   padding: EdgeInsets.all(8.0),
                   child: TextField(
-                    autofocus: false,
                     decoration: InputDecoration(
                       border: OutlineInputBorder(),
                       labelText: 'Enter Text',

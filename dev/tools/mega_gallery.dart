@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-/// Make `n` copies of flutter_gallery.
-
 import 'dart:io';
 
 import 'package:args/args.dart';
@@ -12,10 +10,12 @@ import 'package:path/path.dart' as path;
 /// If no `copies` param is passed in, we scale the generated app up to 60k lines.
 const int kTargetLineCount = 60 * 1024;
 
+/// Make `n` copies of flutter_gallery.
 void main(List<String> args) {
   // If we're run from the `tools` dir, set the cwd to the repo root.
-  if (path.basename(Directory.current.path) == 'tools')
+  if (path.basename(Directory.current.path) == 'tools') {
     Directory.current = Directory.current.parent.parent;
+  }
 
   final ArgParser argParser = ArgParser();
   argParser.addOption('out');
@@ -65,15 +65,17 @@ void main(List<String> args) {
   print('  dev/integration_tests/flutter_gallery    : ${getStatsFor(Directory("dev/integration_tests/flutter_gallery"))}');
 
   final Directory lib = _dir(out, 'lib');
-  if (lib.existsSync())
+  if (lib.existsSync()) {
     lib.deleteSync(recursive: true);
+  }
 
   // Copy everything that's not a symlink, dot directory, or build/.
   _copy(source, out);
 
   // Make n - 1 copies.
-  for (int i = 1; i < copies; i++)
+  for (int i = 1; i < copies; i++) {
     _copyGallery(out, i);
+  }
 
   // Create a new entry-point.
   _createEntry(_file(out, 'lib/main.dart'), copies);
@@ -83,8 +85,16 @@ void main(List<String> args) {
   pubspec = pubspec.replaceAll('../../packages/flutter', '../../../packages/flutter');
   _file(out, 'pubspec.yaml').writeAsStringSync(pubspec);
 
-  // Remove the (flutter_gallery specific) analysis_options.yaml file.
-  _file(out, 'analysis_options.yaml').deleteSync();
+  // Replace the (flutter_gallery specific) analysis_options.yaml file with a default one.
+  _file(out, 'analysis_options.yaml').writeAsStringSync(
+    '''
+analyzer:
+  errors:
+    # See analysis_options.yaml in the flutter root for context.
+    deprecated_member_use: ignore
+    deprecated_member_use_from_same_package: ignore
+'''
+  );
 
   _file(out, '.dartignore').writeAsStringSync('');
 
@@ -131,19 +141,22 @@ void _copyGallery(Directory galleryDir, int index) {
 }
 
 void _copy(Directory source, Directory target) {
-  if (!target.existsSync())
+  if (!target.existsSync()) {
     target.createSync(recursive: true);
+  }
 
   for (final FileSystemEntity entity in source.listSync(followLinks: false)) {
     final String name = path.basename(entity.path);
 
     if (entity is Directory) {
-      if (name == 'build' || name.startsWith('.'))
+      if (name == 'build' || name.startsWith('.')) {
         continue;
+      }
       _copy(entity, Directory(path.join(target.path, name)));
     } else if (entity is File) {
-      if (name == '.packages' || name == 'pubspec.lock')
+      if (name == '.packages' || name == 'pubspec.lock') {
         continue;
+      }
       final File dest = File(path.join(target.path, name));
       dest.writeAsBytesSync(entity.readAsBytesSync());
     }
@@ -162,10 +175,10 @@ class SourceStats {
   String toString() => '${_comma(files).padLeft(3)} files, ${_comma(lines).padLeft(6)} lines';
 }
 
-SourceStats getStatsFor(Directory dir, [SourceStats stats]) {
+SourceStats getStatsFor(Directory dir, [SourceStats? stats]) {
   stats ??= SourceStats();
 
-  for (final FileSystemEntity entity in dir.listSync(recursive: false, followLinks: false)) {
+  for (final FileSystemEntity entity in dir.listSync(followLinks: false)) {
     final String name = path.basename(entity.path);
     if (entity is File && name.endsWith('.dart')) {
       stats.files += 1;
@@ -181,15 +194,17 @@ SourceStats getStatsFor(Directory dir, [SourceStats stats]) {
 int _lineCount(File file) {
   return file.readAsLinesSync().where((String line) {
     line = line.trim();
-    if (line.isEmpty || line.startsWith('//'))
+    if (line.isEmpty || line.startsWith('//')) {
       return false;
+    }
     return true;
   }).length;
 }
 
 String _comma(int count) {
   final String str = count.toString();
-  if (str.length > 3)
-    return str.substring(0, str.length - 3) + ',' + str.substring(str.length - 3);
+  if (str.length > 3) {
+    return '${str.substring(0, str.length - 3)},${str.substring(str.length - 3)}';
+  }
   return str;
 }

@@ -10,9 +10,9 @@ import 'test_driver.dart';
 import 'test_utils.dart';
 
 void main() {
-  Directory tempDir;
+  late Directory tempDir;
   final HotReloadConstProject project = HotReloadConstProject();
-  FlutterRunTestDriver flutter;
+  late FlutterRunTestDriver flutter;
 
   setUp(() async {
     tempDir = createResolvedTempDirectorySync('hot_reload_test.');
@@ -21,7 +21,7 @@ void main() {
   });
 
   tearDown(() async {
-    await flutter?.stop();
+    await flutter.stop();
     tryToDelete(tempDir);
   });
 
@@ -29,6 +29,6 @@ void main() {
     await flutter.run();
     project.removeFieldFromConstClass();
 
-    expect(flutter.hotReload(), throwsA(contains('Try performing a hot restart instead.')));
+    expect(flutter.hotReload(), throwsA(isA<Exception>().having((Exception e) => e.toString(), 'message', contains('Try performing a hot restart instead.'))));
   });
 }

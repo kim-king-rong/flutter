@@ -2,34 +2,36 @@
 
 This directory exists to support building Flutter on our build infrastructure.
 
-The results of such builds are viewable at:
+Flutter build results are available at:
+* https://flutter-dashboard.appspot.com/#/build
+  - Aggregate dashboard of the separate CI systems used by Flutter.
 * https://cirrus-ci.com/github/flutter/flutter/master
   - Testing is done on PRs and submitted changes on GitHub.
-* https://ci.chromium.org/p/flutter/
-  - Additional testing and processing are done after changes are submitted.
 
-The LUCI infra requires permissions to retrigger or schedule builds. Contact
-@kf6gpe or another Google member of the Flutter team if you need to do that.
+Flutter infra requires special permissions to retrigger builds on the
+[build dashboard](https://flutter-dashboard.appspot.com/#/build). File an
+[infra ticket](https://github.com/flutter/flutter/wiki/Infra-Ticket-Queue) to
+request permission.
 
 The [Cirrus](https://cirrus-ci.org)-based bots run the [`test.dart`](test.dart)
 script for each PR and submission. This does testing for the tools, for the
-framework, and (for submitted changes only) rebuilds and updates the master
-branch API docs [staging site](https://master-docs.flutter.dev/).
+framework, and (for submitted changes only) rebuilds and updates the main
+branch API docs [staging site](https://main-api.flutter.dev/).
 For tagged dev and beta builds, it also builds and deploys the gallery app to
 the app stores. It is configured by the [.cirrus.yml](/.cirrus.yml).
 
-We also have post-commit testing with actual devices, in what we call our
-[devicelab](../devicelab/README.md).
+The build dashboard includes post-commit testing run on physical devices. See
+[//dev/devicelab](../devicelab/README.md) for more information.
 
 ## LUCI (Layered Universal Continuous Integration)
 
-A [set of recipes](https://chromium.googlesource.com/chromium/tools/build.git/+/master/scripts/slave/recipes/flutter)
-are run on Windows, Linux, and Mac machines. The configuration for how many
-machines and what kind are managed internally by Google. Contact @kf6gpe or
-another Google member of the Flutter team if you suspect changes are needed
-there. Both of these technologies are highly specific to the [LUCI](https://github.com/luci)
-project, which is the successor to Chromium's infra. We're just borrowing some
-of their infrastructures.
+A [set of infra scripts](https://flutter.googlesource.com/recipes/)
+run on Windows, Linux, and Mac machines. The configuration for how many
+machines and what kind are managed internally by Google. File an
+[infra ticket](https://github.com/flutter/flutter/wiki/Infra-Ticket-Queue)
+to request new machine types to be added. Both of these technologies are highly
+specific to the [LUCI](https://github.com/luci) project, which is the successor
+to Chromium's infra and the foundation to Flutter's infrastructure.
 
 ### Prerequisites
 
@@ -43,7 +45,7 @@ To run `prepare_package.dart` locally:
 
 - Make sure the `depot_tools` is in your `PATH`. If you're on Windows, you also need
   an environment variable called `DEPOT_TOOLS` with the path to `depot_tools` as value.
-- Run `gsutil.py config` (or `python %DEPOT_TOOLS%\gsutil.py` on Windows) to
+- Run `gsutil.py config` (or `python3 %DEPOT_TOOLS%\gsutil.py` on Windows) to
   authenticate with your auth token.
 - Create a local temp directory. `cd` into it.
 - Run `dart [path to your normal Flutter repo]/dev/bots/prepare_package.dart
@@ -52,32 +54,11 @@ To run `prepare_package.dart` locally:
 - If you're running into `gsutil` permission issues, check with @Hixie to make sure
   you have the right push permissions.
 
-### Getting the code
-
-The following will get way more than just recipe code, but it _will_ get the
-recipe code:
-
-```bash
-mkdir chrome_infra
-cd chrome_infra
-fetch infra
-```
-
-More detailed instructions can be found [here](https://chromium.googlesource.com/infra/infra/+/master/doc/source.md).
-
-Most of the functionality for recipes comes from `recipe_modules`, which are
-unfortunately spread to many separate repositories.  After checking out the code
-search for files named `api.py` or `example.py` under `infra/build`.
-
 ### Editing a recipe
 
-Flutter has one recipe per repository. Currently
-[flutter/flutter](https://flutter.googlesource.com/recipes/+/refs/heads/master/recipes/flutter.py)
-and
-[flutter/engine](https://flutter.googlesource.com/recipes/+/refs/heads/master/recipes/engine.py):
-
-- recipes/flutter.py
-- recipes/engine.py
+Flutter has several recipes depending on the test. The recipes share common
+actions through `recipe_modules`. Searching the builder config in [infra](https://flutter.googlesource.com/infra/+/refs/heads/main)
+will indicate the recipe used for a test.
 
 Recipes are just Python with some limitations on what can be imported. They are
 [documented](https://github.com/luci/recipes-py/blob/master/doc/user_guide.md)
@@ -92,33 +73,12 @@ The typical cycle for editing a recipe is:
    the existing expected output to match the new output. Verify completely new test
    cases by altering the `GenTests` method of the recipe. The recipe is required
    to have 100% test coverage.
-4. Run `led get-builder 'luci.flutter.prod:BUILDER_NAME' | led edit -p 'revision="GIT_HASH"' | led edit-recipe-bundle | led launch`, where `BUILDER_NAME` is the builder name (e.g. `Linux Engine`), and
-   `GIT_HASH` is the hash to build (which is important for the engine but not
-   for the framework).
+4. Run `led get-builder 'luci.flutter.staging:BUILDER_NAME' | led edit -pa git_ref='refs/pull/<PR number>/head' | led edit -pa git_url='https://github.com/flutter/<repo>' | led edit-recipe-bundle | led launch`, where `BUILDER_NAME` is the builder name (e.g. `Linux Engine`), and
+   `git_ref`/`git_url` is the ref/url of the intended changes to build.
+   * If `led` fails, ensure that your `depot_tools` checkout is up to date.
 5. To submit a CL, you need a local branch first (`git checkout -b [some branch name]`).
-6. Upload the patch (`git commit`, `git cl upload`), and send it to someone in
-   the `OWNERS` file for review.
-
-### The infra config repository
-
-The [flutter/infra](https://github.com/flutter/infra) repository contains
-configuration files for the dashboard, builder groups, scheduling, and
-individual builders. Edits to this may require changes other internal Google
-repositories - e.g., to change the operating system or number of machines. If
-you want to do that, reach out to @kf6gpe or another member of the Google team.
-
-Each configuration file in that repository has a link in the top comments to a
-schema that describes available properties.
-
-### Future Directions
-
-We would like to host our recipes instead of storing them in
-[build](https://chromium.googlesource.com/chromium/tools/build.git/+/master/scripts/slave/recipes/flutter).
-Support for [cross-repository
-recipes](https://github.com/luci/recipes-py/blob/master/doc/cross_repo.md) is
-in-progress.  If you view the git log of this directory, you'll see we initially
-tried, but it's not quite ready.
-
+6. Upload the patch (`git commit`, `git cl upload`), and open the outputted URL to the CL.
+7. Use "Find owners" to get reviewers for the CL
 
 ### Android Tools
 

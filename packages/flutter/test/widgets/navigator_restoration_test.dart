@@ -2,13 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'dart:ui';
-
 import 'package:flutter/foundation.dart';
-import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
-
-import '../flutter_test_alternative.dart' show Fake;
+import 'package:flutter_test/flutter_test.dart';
+import 'package:leak_tracker_flutter_testing/leak_tracker_flutter_testing.dart';
 
 void main() {
   testWidgets('Restoration Smoke Test', (WidgetTester tester) async {
@@ -816,9 +813,7 @@ void main() {
     // Move navigator into restoration scope.
     await tester.pumpWidget(const RootRestorationScope(
       restorationId: 'root',
-      child: TestWidget(
-        restorationId: 'app',
-      ),
+      child: TestWidget(),
     ));
 
     expect(findRoute('Foo'), findsOneWidget);
@@ -981,8 +976,49 @@ void main() {
     await tester.pumpAndSettle();
     expect(findRoute('p1', count: 0), findsOneWidget);
   });
+
+  testWidgets('Helpful assert thrown all routes in onGenerateInitialRoutes are not restorable',
+  experimentalLeakTesting: LeakTesting.settings.withIgnoredAll(), // leaking by design because of exception
+  (WidgetTester tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        restorationScopeId: 'material_app',
+        initialRoute: '/',
+        routes: <String, WidgetBuilder>{
+          '/': (BuildContext context) => Container(),
+        },
+        onGenerateInitialRoutes: (String initialRoute) {
+          return <MaterialPageRoute<void>>[
+            MaterialPageRoute<void>(
+              builder: (BuildContext context) => Container(),
+            ),
+          ];
+        },
+      ),
+    );
+    await tester.restartAndRestore();
+    final dynamic exception = tester.takeException();
+    expect(exception, isAssertionError);
+    expect(
+      (exception as AssertionError).message,
+      contains('All routes returned by onGenerateInitialRoutes are not restorable.'),
+    );
+
+    // The previous assert leaves the widget tree in a broken state, so the
+    // following code catches any remaining exceptions from attempting to build
+    // new widget tree.
+    final FlutterExceptionHandler? oldHandler = FlutterError.onError;
+    dynamic remainingException;
+    FlutterError.onError = (FlutterErrorDetails details) {
+      remainingException ??= details.exception;
+    };
+    await tester.pumpWidget(Container(key: UniqueKey()));
+    FlutterError.onError = oldHandler;
+    expect(remainingException, isAssertionError);
+  });
 }
 
+@pragma('vm:entry-point')
 Route<void> _routeBuilder(BuildContext context, Object? arguments) {
   return MaterialPageRoute<void>(
     builder: (BuildContext context) {
@@ -993,16 +1029,17 @@ Route<void> _routeBuilder(BuildContext context, Object? arguments) {
   );
 }
 
+@pragma('vm:entry-point')
 Route<void> _routeFutureBuilder(BuildContext context, Object? arguments) {
   return MaterialPageRoute<void>(
     builder: (BuildContext context) {
-      return RouteFutureWidget();
+      return const RouteFutureWidget();
     },
   );
 }
 
 class PagedTestWidget extends StatelessWidget {
-  const PagedTestWidget({this.restorationId = 'app'});
+  const PagedTestWidget({super.key, this.restorationId = 'app'});
 
   final String restorationId;
 
@@ -1012,13 +1049,18 @@ class PagedTestWidget extends StatelessWidget {
       restorationId: restorationId,
       child: Directionality(
         textDirection: TextDirection.ltr,
-        child: PagedTestNavigator(),
+        child: MediaQuery(
+          data: MediaQueryData.fromView(View.of(context)),
+          child: const PagedTestNavigator(),
+        ),
       ),
     );
   }
 }
 
 class PagedTestNavigator extends StatefulWidget {
+  const PagedTestNavigator({super.key});
+
   @override
   State<PagedTestNavigator> createState() => PagedTestNavigatorState();
 }
@@ -1107,7 +1149,7 @@ class PagedTestNavigatorState extends State<PagedTestNavigator> with Restoration
 }
 
 class TestPage extends Page<void> {
-  const TestPage({LocalKey? key, required String name, String? restorationId}) : super(name: name, key: key, restorationId: restorationId);
+  const TestPage({super.key, required String super.name, super.restorationId});
 
   @override
   Route<void> createRoute(BuildContext context) {
@@ -1117,13 +1159,13 @@ class TestPage extends Page<void> {
         return RouteWidget(
           name: name!,
         );
-      }
+      },
     );
   }
 }
 
 class TestWidget extends StatelessWidget {
-  const TestWidget({this.restorationId = 'app'});
+  const TestWidget({super.key, this.restorationId = 'app'});
 
   final String? restorationId;
 
@@ -1133,20 +1175,23 @@ class TestWidget extends StatelessWidget {
       restorationId: restorationId,
       child: Directionality(
         textDirection: TextDirection.ltr,
-        child: Navigator(
-          initialRoute: 'home',
-          restorationScopeId: 'app',
-          onGenerateRoute: (RouteSettings settings) {
-            return MaterialPageRoute<int>(
-              settings: settings,
-              builder: (BuildContext context) {
-                return RouteWidget(
-                  name: settings.name!,
-                  arguments: settings.arguments,
-                );
-              },
-            );
-          },
+        child: MediaQuery(
+          data: MediaQueryData.fromView(View.of(context)),
+          child: Navigator(
+            initialRoute: 'home',
+            restorationScopeId: 'app',
+            onGenerateRoute: (RouteSettings settings) {
+              return MaterialPageRoute<int>(
+                settings: settings,
+                builder: (BuildContext context) {
+                  return RouteWidget(
+                    name: settings.name!,
+                    arguments: settings.arguments,
+                  );
+                },
+              );
+            },
+          ),
         ),
       ),
     );
@@ -1154,7 +1199,7 @@ class TestWidget extends StatelessWidget {
 }
 
 class RouteWidget extends StatefulWidget {
-  const RouteWidget({Key? key, required this.name, this.arguments}) : super(key: key);
+  const RouteWidget({super.key, required this.name, this.arguments});
 
   final String name;
   final Object? arguments;
@@ -1203,6 +1248,8 @@ class RouteWidgetState extends State<RouteWidget> with RestorationMixin {
 }
 
 class RouteFutureWidget extends StatefulWidget {
+  const RouteFutureWidget({super.key});
+
   @override
   State<RouteFutureWidget> createState() => RouteFutureWidgetState();
 }
@@ -1222,7 +1269,7 @@ class RouteFutureWidgetState extends State<RouteFutureWidget> with RestorationMi
         setState(() {
           value = i;
         });
-      }
+      },
     );
   }
 
@@ -1256,7 +1303,7 @@ Future<void> tapRouteCounter(String name, WidgetTester tester) async {
 }
 
 class _RouteFinder extends MatchFinder {
-  _RouteFinder(this.name, { this.arguments, this.count, bool skipOffstage = true }) : super(skipOffstage: skipOffstage);
+  _RouteFinder(this.name, { this.arguments, this.count, super.skipOffstage });
 
   final String name;
   final Object? arguments;
@@ -1294,4 +1341,4 @@ class _RouteFinder extends MatchFinder {
   }
 }
 
-class FakeRoute extends Fake implements Route<void> {}
+class FakeRoute extends Fake implements Route<void> { }

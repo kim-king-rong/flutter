@@ -2,23 +2,21 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   testWidgets('Align smoke test', (WidgetTester tester) async {
     await tester.pumpWidget(
       Align(
-        child: Container(),
         alignment: const Alignment(0.50, 0.50),
+        child: Container(),
       ),
     );
 
     await tester.pumpWidget(
       Align(
         child: Container(),
-        alignment: const Alignment(0.0, 0.0),
       ),
     );
 
@@ -44,8 +42,8 @@ void main() {
     await tester.pumpWidget(const Directionality(
       textDirection: TextDirection.ltr,
       child: Align(
-        child: SizedBox(width: 100.0, height: 80.0),
         alignment: AlignmentDirectional.topStart,
+        child: SizedBox(width: 100.0, height: 80.0),
       ),
     ));
 
@@ -55,8 +53,8 @@ void main() {
     await tester.pumpWidget(const Directionality(
       textDirection: TextDirection.ltr,
       child: Align(
-        child: SizedBox(width: 100.0, height: 80.0),
         alignment: Alignment.topLeft,
+        child: SizedBox(width: 100.0, height: 80.0),
       ),
     ));
 
@@ -68,8 +66,8 @@ void main() {
     await tester.pumpWidget(const Directionality(
       textDirection: TextDirection.rtl,
       child: Align(
-        child: SizedBox(width: 100.0, height: 80.0),
         alignment: AlignmentDirectional.topStart,
+        child: SizedBox(width: 100.0, height: 80.0),
       ),
     ));
 
@@ -79,8 +77,8 @@ void main() {
     await tester.pumpWidget(const Directionality(
       textDirection: TextDirection.ltr,
       child: Align(
-        child: SizedBox(width: 100.0, height: 80.0),
         alignment: Alignment.topLeft,
+        child: SizedBox(width: 100.0, height: 80.0),
       ),
     ));
 
@@ -98,7 +96,6 @@ void main() {
             width: 10.0,
             height: 10.0,
           ),
-          alignment: const Alignment(0.0, 0.0),
         ),
       ),
     );
@@ -110,7 +107,7 @@ void main() {
 
   testWidgets('Align widthFactor', (WidgetTester tester) async {
     await tester.pumpWidget(
-      Directionality(
+      const Directionality(
         textDirection: TextDirection.ltr,
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -118,7 +115,7 @@ void main() {
           children: <Widget>[
             Align(
               widthFactor: 0.5,
-              child: Container(
+              child: SizedBox(
                 height: 100.0,
                 width: 100.0,
               ),
@@ -133,16 +130,15 @@ void main() {
 
   testWidgets('Align heightFactor', (WidgetTester tester) async {
     await tester.pumpWidget(
-      Directionality(
+      const Directionality(
         textDirection: TextDirection.ltr,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             Align(
-              alignment: Alignment.center,
               heightFactor: 0.5,
-              child: Container(
+              child: SizedBox(
                 height: 100.0,
                 width: 100.0,
               ),

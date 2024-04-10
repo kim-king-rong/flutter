@@ -3,12 +3,13 @@
 // found in the LICENSE file.
 
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../rendering/mock_canvas.dart';
 import '../widgets/semantics_tester.dart';
 
 const CupertinoDynamicColor _kSystemFill = CupertinoDynamicColor(
@@ -24,7 +25,7 @@ const CupertinoDynamicColor _kSystemFill = CupertinoDynamicColor(
 
 void main() {
 
-  Future<void> _dragSlider(WidgetTester tester, Key sliderKey) {
+  Future<void> dragSlider(WidgetTester tester, Key sliderKey) {
     final Offset topLeft = tester.getTopLeft(find.byKey(sliderKey));
     const double unit = CupertinoThumbPainter.radius;
     const double delta = 3.0 * unit;
@@ -59,12 +60,12 @@ void main() {
     );
 
     expect(value, equals(0.0));
-    await tester.tap(find.byKey(sliderKey));
+    await tester.tap(find.byKey(sliderKey), warnIfMissed: false);
     expect(value, equals(0.0));
     await tester.pump(); // No animation should start.
     // Check the transientCallbackCount before tearing down the widget to ensure
     // that no animation is running.
-    expect(SchedulerBinding.instance!.transientCallbackCount, equals(0));
+    expect(SchedulerBinding.instance.transientCallbackCount, equals(0));
   });
 
   testWidgets('Slider does not move when tapped (RTL)', (WidgetTester tester) async {
@@ -95,12 +96,12 @@ void main() {
     );
 
     expect(value, equals(0.0));
-    await tester.tap(find.byKey(sliderKey));
+    await tester.tap(find.byKey(sliderKey), warnIfMissed: false);
     expect(value, equals(0.0));
     await tester.pump(); // No animation should start.
     // Check the transientCallbackCount before tearing down the widget to ensure
     // that no animation is running.
-    expect(SchedulerBinding.instance!.transientCallbackCount, equals(0));
+    expect(SchedulerBinding.instance.transientCallbackCount, equals(0));
   });
 
   testWidgets('Slider calls onChangeStart once when interaction begins', (WidgetTester tester) async {
@@ -134,14 +135,14 @@ void main() {
       ),
     );
 
-    await _dragSlider(tester, sliderKey);
+    await dragSlider(tester, sliderKey);
 
     expect(numberOfTimesOnChangeStartIsCalled, equals(1));
 
     await tester.pump(); // No animation should start.
     // Check the transientCallbackCount before tearing down the widget to ensure
     // that no animation is running.
-    expect(SchedulerBinding.instance!.transientCallbackCount, equals(0));
+    expect(SchedulerBinding.instance.transientCallbackCount, equals(0));
   });
 
   testWidgets('Slider calls onChangeEnd once after interaction has ended', (WidgetTester tester) async {
@@ -175,14 +176,14 @@ void main() {
       ),
     );
 
-    await _dragSlider(tester, sliderKey);
+    await dragSlider(tester, sliderKey);
 
     expect(numberOfTimesOnChangeEndIsCalled, equals(1));
 
     await tester.pump(); // No animation should start.
     // Check the transientCallbackCount before tearing down the widget to ensure
     // that no animation is running.
-    expect(SchedulerBinding.instance!.transientCallbackCount, equals(0));
+    expect(SchedulerBinding.instance.transientCallbackCount, equals(0));
   });
 
   testWidgets('Slider moves when dragged (LTR)', (WidgetTester tester) async {
@@ -236,7 +237,7 @@ void main() {
     await tester.pump(); // No animation should start.
     // Check the transientCallbackCount before tearing down the widget to ensure
     // that no animation is running.
-    expect(SchedulerBinding.instance!.transientCallbackCount, equals(0));
+    expect(SchedulerBinding.instance.transientCallbackCount, equals(0));
   });
 
   testWidgets('Slider moves when dragged (RTL)', (WidgetTester tester) async {
@@ -290,7 +291,7 @@ void main() {
     await tester.pump(); // No animation should start.
     // Check the transientCallbackCount before tearing down the widget to ensure
     // that no animation is running.
-    expect(SchedulerBinding.instance!.transientCallbackCount, equals(0));
+    expect(SchedulerBinding.instance.transientCallbackCount, equals(0));
   });
 
   testWidgets('Slider Semantics', (WidgetTester tester) async {
@@ -347,7 +348,7 @@ void main() {
           TestSemantics(
             id: 1,
             flags: <SemanticsFlag>[SemanticsFlag.isSlider],
-          )
+          ),
         ],
       ),
       ignoreRect: true,
@@ -587,7 +588,7 @@ void main() {
       ..rrect()
       ..rrect()
       ..rrect()
-      ..rrect(color: CupertinoColors.systemPurple.color)
+      ..rrect(color: CupertinoColors.systemPurple.color),
     );
 
     await tester.pumpWidget(
@@ -610,7 +611,49 @@ void main() {
           ..rrect()
           ..rrect()
           ..rrect()
-          ..rrect(color: CupertinoColors.activeOrange.color)
+          ..rrect(color: CupertinoColors.activeOrange.color),
+    );
+  });
+
+  testWidgets('Hovering over Cupertino slider thumb updates cursor to clickable on Web', (WidgetTester tester) async {
+    final Key sliderKey = UniqueKey();
+    double value = 0.0;
+
+    await tester.pumpWidget(
+      CupertinoApp(
+        home: Directionality(
+          textDirection: TextDirection.ltr,
+          child: StatefulBuilder(
+            builder: (BuildContext context, StateSetter setState) {
+              return Material(
+                child: Center(
+                  child: CupertinoSlider(
+                    key: sliderKey,
+                    value: value,
+                    onChanged: (double newValue) {
+                      setState(() { value = newValue; });
+                    },
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+
+    final TestGesture gesture = await tester.createGesture(kind: PointerDeviceKind.mouse, pointer: 1);
+    await gesture.addPointer(location: const Offset(10, 10));
+    await tester.pumpAndSettle();
+    expect(RendererBinding.instance.mouseTracker.debugDeviceActiveCursor(1), SystemMouseCursors.basic);
+
+    final Offset topLeft = tester.getTopLeft(find.byKey(sliderKey));
+    await gesture.moveTo(topLeft + const Offset(15, 0));
+    addTearDown(gesture.removePointer);
+    await tester.pumpAndSettle();
+    expect(
+      RendererBinding.instance.mouseTracker.debugDeviceActiveCursor(1),
+      kIsWeb ? SystemMouseCursors.click : SystemMouseCursors.basic,
     );
   });
 }

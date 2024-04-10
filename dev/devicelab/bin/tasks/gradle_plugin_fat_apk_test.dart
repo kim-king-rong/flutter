@@ -4,11 +4,11 @@
 
 import 'dart:io';
 
-import 'package:path/path.dart' as path;
 import 'package:flutter_devicelab/framework/apk_utils.dart';
 import 'package:flutter_devicelab/framework/framework.dart';
 import 'package:flutter_devicelab/framework/task_result.dart';
 import 'package:flutter_devicelab/framework/utils.dart';
+import 'package:path/path.dart' as path;
 
 Future<void> main() async {
   await task(() async {
@@ -21,11 +21,12 @@ Future<void> main() async {
             options: <String>[
               'apk',
               '--debug',
+              '--verbose',
             ],
           );
         });
 
-        final Iterable<String> apkFiles = await getFilesInApk(pluginProject.debugApkPath);
+        Iterable<String> apkFiles = await getFilesInApk(pluginProject.debugApkPath);
 
         checkCollectionContains<String>(<String>[
           ...flutterAssets,
@@ -44,9 +45,7 @@ Future<void> main() async {
           'lib/x86/libapp.so',
           'lib/x86_64/libapp.so',
         ], apkFiles);
-      });
 
-      await runPluginProjectTest((FlutterPluginProject pluginProject) async {
         section('APK content for task assembleRelease without explicit target platform');
 
         await inDirectory(pluginProject.exampleAndroidPath, () {
@@ -55,11 +54,12 @@ Future<void> main() async {
             options: <String>[
               'apk',
               '--release',
+              '--verbose',
             ],
           );
         });
 
-        final Iterable<String> apkFiles = await getFilesInApk(pluginProject.releaseApkPath);
+        apkFiles = await getFilesInApk(pluginProject.releaseApkPath);
 
         checkCollectionContains<String>(<String>[
           ...flutterAssets,
@@ -73,9 +73,7 @@ Future<void> main() async {
         ], apkFiles);
 
         checkCollectionDoesNotContain<String>(debugAssets, apkFiles);
-      });
 
-      await runPluginProjectTest((FlutterPluginProject pluginProject) async {
         section('APK content for task assembleRelease with target platform = android-arm, android-arm64');
 
         await inDirectory(pluginProject.exampleAndroidPath, () {
@@ -84,12 +82,13 @@ Future<void> main() async {
             options: <String>[
               'apk',
               '--release',
-              '--target-platform=android-arm,android-arm64'
+              '--verbose',
+              '--target-platform=android-arm,android-arm64',
             ],
           );
         });
 
-        final Iterable<String> apkFiles = await getFilesInApk(pluginProject.releaseApkPath);
+        apkFiles = await getFilesInApk(pluginProject.releaseApkPath);
 
         checkCollectionContains<String>(<String>[
           ...flutterAssets,
@@ -101,9 +100,7 @@ Future<void> main() async {
         ], apkFiles);
 
         checkCollectionDoesNotContain<String>(debugAssets, apkFiles);
-      });
 
-      await runPluginProjectTest((FlutterPluginProject pluginProject) async {
         section('APK content for task assembleRelease with '
                 'target platform = android-arm, android-arm64 and split per ABI');
 
@@ -113,6 +110,7 @@ Future<void> main() async {
             options: <String>[
               'apk',
               '--release',
+              '--verbose',
               '--split-per-abi',
               '--target-platform=android-arm,android-arm64',
             ],
@@ -151,6 +149,7 @@ Future<void> main() async {
             options: <String>[
               'apk',
               '--release',
+              '--verbose',
             ],
           );
         });

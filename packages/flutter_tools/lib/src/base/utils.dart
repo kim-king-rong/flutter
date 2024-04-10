@@ -3,13 +3,18 @@
 // found in the LICENSE file.
 
 import 'dart:async';
-import 'dart:math' show max;
+import 'dart:math' as math;
 
+import 'package:file/file.dart';
 import 'package:intl/intl.dart';
 import 'package:meta/meta.dart';
+import 'package:path/path.dart' as path; // flutter_ignore: package_path_import
 
 import '../convert.dart';
-import 'file_system.dart';
+import 'platform.dart';
+
+/// A path jointer for URL paths.
+final path.Context urlContext = path.url;
 
 /// Convert `foo_bar` to `fooBar`.
 String camelCase(String str) {
@@ -23,33 +28,54 @@ String camelCase(String str) {
   return str;
 }
 
+/// Convert `fooBar` to `foo-bar`.
+String kebabCase(String str) {
+  return snakeCase(str, '-');
+}
+
 final RegExp _upperRegex = RegExp(r'[A-Z]');
 
 /// Convert `fooBar` to `foo_bar`.
 String snakeCase(String str, [ String sep = '_' ]) {
   return str.replaceAllMapped(_upperRegex,
-      (Match m) => '${m.start == 0 ? '' : sep}${m[0].toLowerCase()}');
+      (Match m) => '${m.start == 0 ? '' : sep}${m[0]!.toLowerCase()}');
 }
 
-String toTitleCase(String str) {
+abstract interface class CliEnum implements Enum {
+  String get cliName;
+  String get helpText;
+
+  static Map<String, String> allowedHelp<T extends CliEnum>(List<T> values) =>
+      Map<String, String>.fromEntries(
+        values.map(
+          (T e) => MapEntry<String, String>(e.cliName, e.helpText),
+        ),
+      );
+}
+
+/// Converts `fooBar` to `FooBar`.
+///
+/// This uses [toBeginningOfSentenceCase](https://pub.dev/documentation/intl/latest/intl/toBeginningOfSentenceCase.html),
+/// with the input and return value of non-nullable.
+String sentenceCase(String str, [String? locale]) {
   if (str.isEmpty) {
     return str;
   }
-  return str.substring(0, 1).toUpperCase() + str.substring(1);
+  // TODO(christopherfujino): Remove this check after the next release of intl
+  return ArgumentError.checkNotNull(toBeginningOfSentenceCase(str, locale));
+}
+
+/// Converts `foo_bar` to `Foo Bar`.
+String snakeCaseToTitleCase(String snakeCaseString) {
+  return snakeCaseString.split('_').map(camelCase).map(sentenceCase).join(' ');
 }
 
 /// Return the plural of the given word (`cat(s)`).
-String pluralize(String word, int count) => count == 1 ? word : word + 's';
-
-/// Return the name of an enum item.
-String getEnumName(dynamic enumItem) {
-  final String name = '$enumItem';
-  final int index = name.indexOf('.');
-  return index == -1 ? name : name.substring(index + 1);
-}
+String pluralize(String word, int count) => count == 1 ? word : '${word}s';
 
 String toPrettyJson(Object jsonable) {
-  return const JsonEncoder.withIndent('  ').convert(jsonable) + '\n';
+  final String value = const JsonEncoder.withIndent('  ').convert(jsonable);
+  return '$value\n';
 }
 
 final NumberFormat kSecondsFormat = NumberFormat('0.0');
@@ -64,22 +90,23 @@ String getElapsedAsMilliseconds(Duration duration) {
   return '${kMillisecondsFormat.format(duration.inMilliseconds)}ms';
 }
 
-/// Return a String - with units - for the size in MB of the given number of bytes.
-String getSizeAsMB(int bytesLength) {
-  return '${(bytesLength / (1024 * 1024)).toStringAsFixed(1)}MB';
+/// Return a platform-appropriate [String] representing the size of the given number of bytes.
+String getSizeAsPlatformMB(int bytesLength, {
+    @visibleForTesting Platform platform = const LocalPlatform()
+  }) {
+  // Because Windows displays 'MB' but actually reports MiB, we calculate MiB
+  // accordingly on Windows.
+  final int bytesInPlatformMB = platform.isWindows ? 1024 * 1024 : 1000 * 1000;
+  return '${(bytesLength / bytesInPlatformMB).toStringAsFixed(1)}MB';
 }
 
 /// A class to maintain a list of items, fire events when items are added or
 /// removed, and calculate a diff of changes when a new list of items is
 /// available.
 class ItemListNotifier<T> {
-  ItemListNotifier() {
-    _items = <T>{};
-  }
+  ItemListNotifier(): _items = <T>{}, _isPopulated = false;
 
-  ItemListNotifier.from(List<T> items) {
-    _items = Set<T>.of(items);
-  }
+  ItemListNotifier.from(List<T> items) : _items = Set<T>.of(items), _isPopulated = true;
 
   Set<T> _items;
 
@@ -91,6 +118,11 @@ class ItemListNotifier<T> {
 
   List<T> get items => _items.toList();
 
+  bool _isPopulated;
+
+  /// Returns whether the list has been populated.
+  bool get isPopulated => _isPopulated;
+
   void updateWithNewList(List<T> updatedList) {
     final Set<T> updatedSet = Set<T>.of(updatedList);
 
@@ -98,9 +130,10 @@ class ItemListNotifier<T> {
     final Set<T> removedItems = _items.difference(updatedSet);
 
     _items = updatedSet;
+    _isPopulated = true;
 
-    addedItems.forEach(_addedController.add);
     removedItems.forEach(_removedController.add);
+    addedItems.forEach(_addedController.add);
   }
 
   void removeItem(T item) {
@@ -132,9 +165,7 @@ class SettingsFile {
     }
   }
 
-  factory SettingsFile.parseFromFile(File file) {
-    return SettingsFile.parse(file.readAsStringSync());
-  }
+  SettingsFile.parseFromFile(File file) : this.parse(file.readAsStringSync());
 
   final Map<String, String> values = <String, String>{};
 
@@ -148,9 +179,9 @@ class SettingsFile {
 
 /// Given a data structure which is a Map of String to dynamic values, return
 /// the same structure (`Map<String, dynamic>`) with the correct runtime types.
-Map<String, dynamic> castStringKeyedMap(dynamic untyped) {
-  final Map<dynamic, dynamic> map = untyped as Map<dynamic, dynamic>;
-  return map?.cast<String, dynamic>();
+Map<String, Object?>? castStringKeyedMap(Object? untyped) {
+  final Map<dynamic, dynamic>? map = untyped as Map<dynamic, dynamic>?;
+  return map?.cast<String, Object?>();
 }
 
 /// Smallest column that will be used for text wrapping. If the requested column
@@ -159,9 +190,10 @@ const int kMinColumnWidth = 10;
 
 /// Wraps a block of text into lines no longer than [columnWidth].
 ///
-/// Tries to split at whitespace, but if that's not good enough to keep it
-/// under the limit, then it splits in the middle of a word. If [columnWidth] is
-/// smaller than 10 columns, will wrap at 10 columns.
+/// Tries to split at whitespace, but if that's not good enough to keep it under
+/// the limit, then it splits in the middle of a word. If [columnWidth] (minus
+/// any indent) is smaller than [kMinColumnWidth], the text is wrapped at that
+/// [kMinColumnWidth] instead.
 ///
 /// Preserves indentation (leading whitespace) for each line (delimited by '\n')
 /// in the input, and will indent wrapped lines that same amount, adding
@@ -178,33 +210,29 @@ const int kMinColumnWidth = 10;
 /// ```
 ///
 /// yields:
-/// ```
+/// ```none
 ///   Usage: app main_command <subcommand>
 ///          [arguments]
 /// ```
-///
-/// If [columnWidth] is not specified, then the column width will be the
-/// [outputPreferences.wrapColumn], which is set with the --wrap-column option.
 ///
 /// If [outputPreferences.wrapText] is false, then the text will be returned
 /// unchanged. If [shouldWrap] is specified, then it overrides the
 /// [outputPreferences.wrapText] setting.
 ///
-/// The [indent] and [hangingIndent] must be smaller than [columnWidth] when
-/// added together.
+/// If the amount of indentation (from the text, [indent], and [hangingIndent])
+/// is such that less than [kMinColumnWidth] characters can fit in the
+/// [columnWidth], then the indent is truncated to allow the text to fit.
 String wrapText(String text, {
-  @required int columnWidth,
-  @required bool shouldWrap,
-  int hangingIndent,
-  int indent,
+  required int columnWidth,
+  required bool shouldWrap,
+  int? hangingIndent,
+  int? indent,
 }) {
-  if (text == null || text.isEmpty) {
+  assert(columnWidth >= 0);
+  if (text.isEmpty) {
     return '';
   }
   indent ??= 0;
-  columnWidth -= indent;
-  assert(columnWidth >= 0);
-
   hangingIndent ??= 0;
   final List<String> splitText = text.split('\n');
   final List<String> result = <String>[];
@@ -218,35 +246,39 @@ String wrapText(String text, {
       // them twice and recombine.
       final List<String> firstLineWrap = _wrapTextAsLines(
         trimmedText,
-        columnWidth: columnWidth - leadingWhitespace.length,
+        columnWidth: columnWidth - leadingWhitespace.length - indent,
         shouldWrap: shouldWrap,
       );
       notIndented = <String>[firstLineWrap.removeAt(0)];
       trimmedText = trimmedText.substring(notIndented[0].length).trimLeft();
-      if (firstLineWrap.isNotEmpty) {
+      if (trimmedText.isNotEmpty) {
         notIndented.addAll(_wrapTextAsLines(
           trimmedText,
-          columnWidth: columnWidth - leadingWhitespace.length - hangingIndent,
+          columnWidth: columnWidth - leadingWhitespace.length - indent - hangingIndent,
           shouldWrap: shouldWrap,
         ));
       }
     } else {
       notIndented = _wrapTextAsLines(
         trimmedText,
-        columnWidth: columnWidth - leadingWhitespace.length,
+        columnWidth: columnWidth - leadingWhitespace.length - indent,
         shouldWrap: shouldWrap,
       );
     }
-    String hangingIndentString;
+    String? hangingIndentString;
     final String indentString = ' ' * indent;
-    result.addAll(notIndented.map(
+    result.addAll(notIndented.map<String>(
       (String line) {
         // Don't return any lines with just whitespace on them.
         if (line.isEmpty) {
           return '';
         }
-        final String result = '$indentString${hangingIndentString ?? ''}$leadingWhitespace$line';
-        hangingIndentString ??= ' ' * hangingIndent;
+        String truncatedIndent = '$indentString${hangingIndentString ?? ''}$leadingWhitespace';
+        if (truncatedIndent.length > columnWidth - kMinColumnWidth) {
+          truncatedIndent = truncatedIndent.substring(0, math.max(columnWidth - kMinColumnWidth, 0));
+        }
+        final String result = '$truncatedIndent$line';
+        hangingIndentString ??= ' ' * hangingIndent!;
         return result;
       },
     ));
@@ -274,19 +306,20 @@ class _AnsiRun {
 /// terminal window by default. If the stdout is not a terminal window, then the
 /// default will be [outputPreferences.wrapColumn].
 ///
+/// The [columnWidth] is clamped to [kMinColumnWidth] at minimum (so passing negative
+/// widths is fine, for instance).
+///
 /// If [outputPreferences.wrapText] is false, then the text will be returned
-/// simply split at the newlines, but not wrapped. If [shouldWrap] is specified,
+/// split at the newlines, but not wrapped. If [shouldWrap] is specified,
 /// then it overrides the [outputPreferences.wrapText] setting.
 List<String> _wrapTextAsLines(String text, {
   int start = 0,
-  int columnWidth,
-  @required bool shouldWrap,
+  required int columnWidth,
+  required bool shouldWrap,
 }) {
-  if (text == null || text.isEmpty) {
+  if (text.isEmpty) {
     return <String>[''];
   }
-  assert(columnWidth != null);
-  assert(columnWidth >= 0);
   assert(start >= 0);
 
   // Splits a string so that the resulting list has the same number of elements
@@ -300,9 +333,9 @@ List<String> _wrapTextAsLines(String text, {
     final StringBuffer current = StringBuffer();
     for (final Match match in characterOrCode.allMatches(input)) {
       current.write(match[0]);
-      if (match[0].length < 4) {
+      if (match[0]!.length < 4) {
         // This is a regular character, write it out.
-        result.add(_AnsiRun(current.toString(), match[0]));
+        result.add(_AnsiRun(current.toString(), match[0]!));
         current.clear();
       }
     }
@@ -320,15 +353,15 @@ List<String> _wrapTextAsLines(String text, {
     return result;
   }
 
-  String joinRun(List<_AnsiRun> list, int start, [ int end ]) {
+  String joinRun(List<_AnsiRun> list, int start, [ int? end ]) {
     return list.sublist(start, end).map<String>((_AnsiRun run) => run.original).join().trim();
   }
 
   final List<String> result = <String>[];
-  final int effectiveLength = max(columnWidth - start, kMinColumnWidth);
+  final int effectiveLength = math.max(columnWidth - start, kMinColumnWidth);
   for (final String line in text.split('\n')) {
     // If the line is short enough, even with ANSI codes, then we can just add
-    // add it and move on.
+    // it and move on.
     if (line.length <= effectiveLength || !shouldWrap) {
       result.add(line);
       continue;
@@ -340,10 +373,10 @@ List<String> _wrapTextAsLines(String text, {
     }
 
     int currentLineStart = 0;
-    int lastWhitespace;
+    int? lastWhitespace;
     // Find the start of the current line.
     for (int index = 0; index < splitLine.length; ++index) {
-      if (splitLine[index].character.isNotEmpty && isWhitespace(splitLine[index])) {
+      if (splitLine[index].character.isNotEmpty && _isWhitespace(splitLine[index])) {
         lastWhitespace = index;
       }
 
@@ -357,7 +390,7 @@ List<String> _wrapTextAsLines(String text, {
         result.add(joinRun(splitLine, currentLineStart, index));
 
         // Skip any intervening whitespace.
-        while (index < splitLine.length && isWhitespace(splitLine[index])) {
+        while (index < splitLine.length && _isWhitespace(splitLine[index])) {
           index++;
         }
 
@@ -374,7 +407,7 @@ List<String> _wrapTextAsLines(String text, {
 /// character.
 ///
 /// Based on: https://en.wikipedia.org/wiki/Whitespace_character#Unicode
-bool isWhitespace(_AnsiRun run) {
+bool _isWhitespace(_AnsiRun run) {
   final int rune = run.character.isNotEmpty ? run.character.codeUnitAt(0) : 0x0;
   return rune >= 0x0009 && rune <= 0x000D ||
       rune == 0x0020 ||
@@ -388,4 +421,107 @@ bool isWhitespace(_AnsiRun run) {
       rune == 0x205F ||
       rune == 0x3000 ||
       rune == 0xFEFF;
+}
+
+final RegExp _interpolationRegex = RegExp(r'\$\{([^}]*)\}');
+
+/// Given a string that possibly contains string interpolation sequences
+/// (so for example, something like `ping -n 1 ${host}`), replace all those
+/// interpolation sequences with the matching value given in [replacementValues].
+///
+/// If the value could not be found inside [replacementValues], an empty
+/// string will be substituted instead.
+///
+/// However, if the dollar sign inside the string is preceded with a backslash,
+/// the sequences won't be substituted at all.
+///
+/// Example:
+/// ```dart
+/// final interpolated = _interpolateString(r'ping -n 1 ${host}', {'host': 'raspberrypi'});
+/// print(interpolated);  // will print 'ping -n 1 raspberrypi'
+///
+/// final interpolated2 = _interpolateString(r'ping -n 1 ${_host}', {'host': 'raspberrypi'});
+/// print(interpolated2); // will print 'ping -n 1 '
+/// ```
+String interpolateString(String toInterpolate, Map<String, String> replacementValues) {
+  return toInterpolate.replaceAllMapped(_interpolationRegex, (Match match) {
+    /// The name of the variable to be inserted into the string.
+    /// Example: If the source string is 'ping -n 1 ${host}',
+    ///   `name` would be 'host'
+    final String name = match.group(1)!;
+    return replacementValues.containsKey(name) ? replacementValues[name]! : '';
+  });
+}
+
+/// Given a list of strings possibly containing string interpolation sequences
+/// (so for example, something like `['ping', '-n', '1', '${host}']`), replace
+/// all those interpolation sequences with the matching value given in [replacementValues].
+///
+/// If the value could not be found inside [replacementValues], an empty
+/// string will be substituted instead.
+///
+/// However, if the dollar sign inside the string is preceded with a backslash,
+/// the sequences won't be substituted at all.
+///
+/// Example:
+/// ```dart
+/// final interpolated = _interpolateString(['ping', '-n', '1', r'${host}'], {'host': 'raspberrypi'});
+/// print(interpolated);  // will print '[ping, -n, 1, raspberrypi]'
+///
+/// final interpolated2 = _interpolateString(['ping', '-n', '1', r'${_host}'], {'host': 'raspberrypi'});
+/// print(interpolated2); // will print '[ping, -n, 1, ]'
+/// ```
+List<String> interpolateStringList(List<String> toInterpolate, Map<String, String> replacementValues) {
+  return toInterpolate.map((String s) => interpolateString(s, replacementValues)).toList();
+}
+
+/// Returns the first line-based match for [regExp] in [file].
+///
+/// Assumes UTF8 encoding.
+Match? firstMatchInFile(File file, RegExp regExp) {
+  if (!file.existsSync()) {
+    return null;
+  }
+  for (final String line in file.readAsLinesSync()) {
+    final Match? match = regExp.firstMatch(line);
+    if (match != null) {
+      return match;
+    }
+  }
+  return null;
+}
+
+/// Tests for shallow equality on two sets.
+bool setEquals<T>(Set<T>? a, Set<T>? b) {
+  if (a == null) {
+    return b == null;
+  }
+  if (b == null || a.length != b.length) {
+    return false;
+  }
+  if (identical(a, b)) {
+    return true;
+  }
+  for (final T value in a) {
+    if (!b.contains(value)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/// Tests for shallow equality on two lists.
+bool listEquals<T>(List<T> a, List<T> b) {
+  if (identical(a, b)) {
+    return true;
+  }
+  if (a.length != b.length) {
+    return false;
+  }
+  for (int index = 0; index < a.length; index++) {
+    if (a[index] != b[index]) {
+      return false;
+    }
+  }
+  return true;
 }

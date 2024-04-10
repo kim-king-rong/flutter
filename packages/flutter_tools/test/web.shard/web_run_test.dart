@@ -11,9 +11,9 @@ import '../integration.shard/test_utils.dart';
 import '../src/common.dart';
 
 void main() {
-  Directory tempDir;
+  late Directory tempDir;
   final BasicProjectWithUnaryMain project = BasicProjectWithUnaryMain();
-  FlutterRunTestDriver flutter;
+  late FlutterRunTestDriver flutter;
 
   setUp(() async {
     tempDir = createResolvedTempDirectorySync('run_test.');
@@ -27,6 +27,6 @@ void main() {
   });
 
   testWithoutContext('flutter run works on web devices with a unary main function', () async {
-    await flutter.run(chrome: true, additionalCommandArgs: <String>['--verbose']);
+    await flutter.run(chrome: true, additionalCommandArgs: <String>['--verbose', '--web-renderer=html']);
   });
 }

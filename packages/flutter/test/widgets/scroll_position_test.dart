@@ -2,10 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'dart:ui';
-
-import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 ScrollController _controller = ScrollController(
   initialScrollOffset: 110.0,
@@ -13,9 +11,9 @@ ScrollController _controller = ScrollController(
 
 class ThePositiveNumbers extends StatelessWidget {
   const ThePositiveNumbers({
-    Key? key,
+    super.key,
     required this.from,
-  }) : super(key: key);
+  });
   final int from;
   @override
   Widget build(BuildContext context) {
@@ -35,24 +33,27 @@ Future<void> performTest(WidgetTester tester, bool maintainState) async {
   await tester.pumpWidget(
     Directionality(
       textDirection: TextDirection.ltr,
-      child: Navigator(
-        key: navigatorKey,
-        onGenerateRoute: (RouteSettings settings) {
-          if (settings.name == '/') {
-            return MaterialPageRoute<void>(
-              settings: settings,
-              builder: (_) => Container(child: const ThePositiveNumbers(from: 0)),
-              maintainState: maintainState,
-            );
-          } else if (settings.name == '/second') {
-            return MaterialPageRoute<void>(
-              settings: settings,
-              builder: (_) => Container(child: const ThePositiveNumbers(from: 10000)),
-              maintainState: maintainState,
-            );
-          }
-          return null;
-        },
+      child: MediaQuery(
+        data: MediaQueryData.fromView(tester.view),
+        child: Navigator(
+          key: navigatorKey,
+          onGenerateRoute: (RouteSettings settings) {
+            if (settings.name == '/') {
+              return MaterialPageRoute<void>(
+                settings: settings,
+                builder: (_) => const ThePositiveNumbers(from: 0),
+                maintainState: maintainState,
+              );
+            } else if (settings.name == '/second') {
+              return MaterialPageRoute<void>(
+                settings: settings,
+                builder: (_) => const ThePositiveNumbers(from: 10000),
+                maintainState: maintainState,
+              );
+            }
+            return null;
+          },
+        ),
       ),
     ),
   );
@@ -139,7 +140,7 @@ Future<void> performTest(WidgetTester tester, bool maintainState) async {
 }
 
 void main() {
-  testWidgets('ScrollPosition jumpTo() doesn\'t call notifyListeners twice', (WidgetTester tester) async {
+  testWidgets("ScrollPosition jumpTo() doesn't call notifyListeners twice", (WidgetTester tester) async {
     int count = 0;
     await tester.pumpWidget(MaterialApp(
       home: ListView.builder(
@@ -166,11 +167,17 @@ void main() {
   testWidgets('scroll alignment is honored by ensureVisible', (WidgetTester tester) async {
     final List<int> items = List<int>.generate(11, (int index) => index).toList();
     final List<FocusNode> nodes = List<FocusNode>.generate(11, (int index) => FocusNode(debugLabel: 'Item ${index + 1}')).toList();
+    addTearDown(() {
+      for (final FocusNode node in nodes) {
+        node.dispose();
+      }
+    });
     final ScrollController controller = ScrollController();
+    addTearDown(controller.dispose);
+
     await tester.pumpWidget(
       MaterialApp(
         home: ListView(
-          scrollDirection: Axis.vertical,
           controller: controller,
           children: items.map<Widget>((int item) {
             return Focus(
@@ -226,7 +233,7 @@ void main() {
     expect(controller.position.pixels, equals(0.0));
   });
 
-  testWidgets('jumpTo recomends deferred loading', (WidgetTester tester) async {
+  testWidgets('jumpTo recommends deferred loading', (WidgetTester tester) async {
     int loadedWithDeferral = 0;
     int buildCount = 0;
     const double height = 500;

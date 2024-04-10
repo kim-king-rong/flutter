@@ -23,6 +23,7 @@ class TableBorder {
     this.left = BorderSide.none,
     this.horizontalInside = BorderSide.none,
     this.verticalInside = BorderSide.none,
+    this.borderRadius = BorderRadius.zero,
   });
 
   /// A uniform border with all sides the same color and width.
@@ -32,26 +33,24 @@ class TableBorder {
     Color color = const Color(0xFF000000),
     double width = 1.0,
     BorderStyle style = BorderStyle.solid,
+    BorderRadius borderRadius = BorderRadius.zero,
   }) {
     final BorderSide side = BorderSide(color: color, width: width, style: style);
-    return TableBorder(top: side, right: side, bottom: side, left: side, horizontalInside: side, verticalInside: side);
+    return TableBorder(top: side, right: side, bottom: side, left: side, horizontalInside: side, verticalInside: side, borderRadius: borderRadius);
   }
 
   /// Creates a border for a table where all the interior sides use the same
   /// styling and all the exterior sides use the same styling.
-  factory TableBorder.symmetric({
+  const TableBorder.symmetric({
     BorderSide inside = BorderSide.none,
     BorderSide outside = BorderSide.none,
-  }) {
-    return TableBorder(
-      top: outside,
-      right: outside,
-      bottom: outside,
-      left: outside,
-      horizontalInside: inside,
-      verticalInside: inside,
-    );
-  }
+    this.borderRadius = BorderRadius.zero,
+  }) : top = outside,
+       right = outside,
+       bottom = outside,
+       left = outside,
+       horizontalInside = inside,
+       verticalInside = inside;
 
   /// The top side of this border.
   final BorderSide top;
@@ -71,6 +70,11 @@ class TableBorder {
   /// The vertical interior sides of this border.
   final BorderSide verticalInside;
 
+  /// The [BorderRadius] to use when painting the corners of this border.
+  ///
+  /// It is also applied to [DataTable]'s [Material].
+  final BorderRadius borderRadius;
+
   /// The widths of the sides of this border represented as an [EdgeInsets].
   ///
   /// This can be used, for example, with a [Padding] widget to inset a box by
@@ -82,36 +86,33 @@ class TableBorder {
   /// Whether all the sides of the border (outside and inside) are identical.
   /// Uniform borders are typically more efficient to paint.
   bool get isUniform {
-    assert(top != null);
-    assert(right != null);
-    assert(bottom != null);
-    assert(left != null);
-    assert(horizontalInside != null);
-    assert(verticalInside != null);
 
     final Color topColor = top.color;
     if (right.color != topColor ||
         bottom.color != topColor ||
         left.color != topColor ||
         horizontalInside.color != topColor ||
-        verticalInside.color != topColor)
+        verticalInside.color != topColor) {
       return false;
+    }
 
     final double topWidth = top.width;
     if (right.width != topWidth ||
         bottom.width != topWidth ||
         left.width != topWidth ||
         horizontalInside.width != topWidth ||
-        verticalInside.width != topWidth)
+        verticalInside.width != topWidth) {
       return false;
+    }
 
     final BorderStyle topStyle = top.style;
     if (right.style != topStyle ||
         bottom.style != topStyle ||
         left.style != topStyle ||
         horizontalInside.style != topStyle ||
-        verticalInside.style != topStyle)
+        verticalInside.style != topStyle) {
       return false;
+    }
 
     return true;
   }
@@ -149,13 +150,15 @@ class TableBorder {
   ///
   /// {@macro dart.ui.shadow.lerp}
   static TableBorder? lerp(TableBorder? a, TableBorder? b, double t) {
-    assert(t != null);
-    if (a == null && b == null)
-      return null;
-    if (a == null)
+    if (identical(a, b)) {
+      return a;
+    }
+    if (a == null) {
       return b!.scale(t);
-    if (b == null)
+    }
+    if (b == null) {
       return a.scale(1.0 - t);
+    }
     return TableBorder(
       top: BorderSide.lerp(a.top, b.top, t),
       right: BorderSide.lerp(a.right, b.right, t),
@@ -199,19 +202,9 @@ class TableBorder {
     required Iterable<double> columns,
   }) {
     // properties can't be null
-    assert(top != null);
-    assert(right != null);
-    assert(bottom != null);
-    assert(left != null);
-    assert(horizontalInside != null);
-    assert(verticalInside != null);
 
     // arguments can't be null
-    assert(canvas != null);
-    assert(rect != null);
-    assert(rows != null);
     assert(rows.isEmpty || (rows.first >= 0.0 && rows.last <= rect.height));
-    assert(columns != null);
     assert(columns.isEmpty || (columns.first >= 0.0 && columns.last <= rect.width));
 
     if (columns.isNotEmpty || rows.isNotEmpty) {
@@ -231,7 +224,6 @@ class TableBorder {
               path.lineTo(rect.left + x, rect.bottom);
             }
             canvas.drawPath(path, paint);
-            break;
           case BorderStyle.none:
             break;
         }
@@ -250,33 +242,42 @@ class TableBorder {
               path.lineTo(rect.right, rect.top + y);
             }
             canvas.drawPath(path, paint);
-            break;
           case BorderStyle.none:
             break;
         }
       }
     }
-    paintBorder(canvas, rect, top: top, right: right, bottom: bottom, left: left);
+    if (!isUniform || borderRadius == BorderRadius.zero) {
+      paintBorder(canvas, rect, top: top, right: right, bottom: bottom, left: left);
+    } else {
+      final RRect outer = borderRadius.toRRect(rect);
+      final RRect inner = outer.deflate(top.width);
+      final Paint paint = Paint()..color = top.color;
+      canvas.drawDRRect(outer, inner, paint);
+    }
   }
 
   @override
   bool operator ==(Object other) {
-    if (identical(this, other))
+    if (identical(this, other)) {
       return true;
-    if (other.runtimeType != runtimeType)
+    }
+    if (other.runtimeType != runtimeType) {
       return false;
+    }
     return other is TableBorder
         && other.top == top
         && other.right == right
         && other.bottom == bottom
         && other.left == left
         && other.horizontalInside == horizontalInside
-        && other.verticalInside == verticalInside;
+        && other.verticalInside == verticalInside
+        && other.borderRadius == borderRadius;
   }
 
   @override
-  int get hashCode => hashValues(top, right, bottom, left, horizontalInside, verticalInside);
+  int get hashCode => Object.hash(top, right, bottom, left, horizontalInside, verticalInside, borderRadius);
 
   @override
-  String toString() => 'TableBorder($top, $right, $bottom, $left, $horizontalInside, $verticalInside)';
+  String toString() => 'TableBorder($top, $right, $bottom, $left, $horizontalInside, $verticalInside, $borderRadius)';
 }

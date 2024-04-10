@@ -6,6 +6,7 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -17,8 +18,7 @@ void main() {
     await tester.pumpWidget(
       const Placeholder(),
       // Stops right after the warm up frame.
-      null,
-      EnginePhase.build
+      phase: EnginePhase.build,
     );
     // The warm up frame will send update for an empty semantics tree. We
     // ignore this one time update.
@@ -82,7 +82,87 @@ void main() {
 
     SemanticsUpdateBuilderSpy.observations.clear();
     handle.dispose();
-  });
+  }, skip: true); // https://github.com/flutter/flutter/issues/97894
+
+  testWidgets('Semantics update receives attributed text', (WidgetTester tester) async {
+    final SemanticsHandle handle = tester.ensureSemantics();
+    // Pumps a placeholder to trigger the warm up frame.
+    await tester.pumpWidget(
+      const Placeholder(),
+      // Stops right after the warm up frame.
+      phase: EnginePhase.build,
+    );
+    // The warm up frame will send update for an empty semantics tree. We
+    // ignore this one time update.
+    SemanticsUpdateBuilderSpy.observations.clear();
+
+    // Builds the real widget tree.
+    await tester.pumpWidget(
+      Directionality(
+        textDirection: TextDirection.ltr,
+        child: Semantics(
+          attributedLabel: AttributedString(
+            'label',
+            attributes: <StringAttribute>[
+              SpellOutStringAttribute(range: const TextRange(start: 0, end: 5)),
+            ],
+          ),
+          attributedValue: AttributedString(
+            'value',
+            attributes: <StringAttribute>[
+              LocaleStringAttribute(range: const TextRange(start: 0, end: 5), locale: const Locale('en', 'MX')),
+            ],
+          ),
+          attributedHint: AttributedString(
+            'hint',
+            attributes: <StringAttribute>[
+              SpellOutStringAttribute(range: const TextRange(start: 1, end: 2)),
+            ],
+          ),
+          child: const Placeholder(),
+        ),
+      ),
+    );
+
+    expect(SemanticsUpdateBuilderSpy.observations.length, 2);
+
+    expect(SemanticsUpdateBuilderSpy.observations.containsKey(0), isTrue);
+    expect(SemanticsUpdateBuilderSpy.observations[0]!.childrenInTraversalOrder.length, 1);
+    expect(SemanticsUpdateBuilderSpy.observations[0]!.childrenInTraversalOrder[0], 1);
+
+    expect(SemanticsUpdateBuilderSpy.observations.containsKey(1), isTrue);
+    expect(SemanticsUpdateBuilderSpy.observations[1]!.childrenInTraversalOrder.length, 0);
+    expect(SemanticsUpdateBuilderSpy.observations[1]!.label, 'label');
+    expect(SemanticsUpdateBuilderSpy.observations[1]!.labelAttributes!.length, 1);
+    expect(SemanticsUpdateBuilderSpy.observations[1]!.labelAttributes![0] is SpellOutStringAttribute, isTrue);
+    expect(SemanticsUpdateBuilderSpy.observations[1]!.labelAttributes![0].range, const TextRange(start: 0, end: 5));
+
+    expect(SemanticsUpdateBuilderSpy.observations[1]!.value, 'value');
+    expect(SemanticsUpdateBuilderSpy.observations[1]!.valueAttributes!.length, 1);
+    expect(SemanticsUpdateBuilderSpy.observations[1]!.valueAttributes![0] is LocaleStringAttribute, isTrue);
+    final LocaleStringAttribute localeAttribute = SemanticsUpdateBuilderSpy.observations[1]!.valueAttributes![0] as LocaleStringAttribute;
+    expect(localeAttribute.range, const TextRange(start: 0, end: 5));
+    expect(localeAttribute.locale, const Locale('en', 'MX'));
+
+    expect(SemanticsUpdateBuilderSpy.observations[1]!.hint, 'hint');
+    expect(SemanticsUpdateBuilderSpy.observations[1]!.hintAttributes!.length, 1);
+    expect(SemanticsUpdateBuilderSpy.observations[1]!.hintAttributes![0] is SpellOutStringAttribute, isTrue);
+    expect(SemanticsUpdateBuilderSpy.observations[1]!.hintAttributes![0].range, const TextRange(start: 1, end: 2));
+
+    expect(
+      tester.widget(find.byType(Semantics)).toString(),
+      'Semantics('
+        'container: false, '
+        'properties: SemanticsProperties, '
+        'attributedLabel: "label" [SpellOutStringAttribute(TextRange(start: 0, end: 5))], '
+        'attributedValue: "value" [LocaleStringAttribute(TextRange(start: 0, end: 5), en-MX)], '
+        'attributedHint: "hint" [SpellOutStringAttribute(TextRange(start: 1, end: 2))]' // ignore: missing_whitespace_between_adjacent_strings
+      ')',
+    );
+
+    SemanticsUpdateBuilderSpy.observations.clear();
+    handle.dispose();
+  }, skip: true); // https://github.com/flutter/flutter/issues/97894
 }
 
 class SemanticsUpdateTestBinding extends AutomatedTestWidgetsFlutterBinding {
@@ -92,7 +172,9 @@ class SemanticsUpdateTestBinding extends AutomatedTestWidgetsFlutterBinding {
   }
 }
 
-class SemanticsUpdateBuilderSpy extends ui.SemanticsUpdateBuilder {
+class SemanticsUpdateBuilderSpy extends Fake implements ui.SemanticsUpdateBuilder {
+  final SemanticsUpdateBuilder _builder = ui.SemanticsUpdateBuilder();
+
   static Map<int, SemanticsNodeUpdateObservation> observations = <int, SemanticsNodeUpdateObservation>{};
 
   @override
@@ -113,11 +195,18 @@ class SemanticsUpdateBuilderSpy extends ui.SemanticsUpdateBuilder {
     required double elevation,
     required double thickness,
     required Rect rect,
+    required String identifier,
     required String label,
-    required String hint,
+    List<StringAttribute>? labelAttributes,
     required String value,
+    List<StringAttribute>? valueAttributes,
     required String increasedValue,
+    List<StringAttribute>? increasedValueAttributes,
     required String decreasedValue,
+    List<StringAttribute>? decreasedValueAttributes,
+    required String hint,
+    List<StringAttribute>? hintAttributes,
+    String? tooltip,
     TextDirection? textDirection,
     required Float64List transform,
     required Int32List childrenInTraversalOrder,
@@ -127,90 +216,40 @@ class SemanticsUpdateBuilderSpy extends ui.SemanticsUpdateBuilder {
     // Makes sure we don't send the same id twice.
     assert(!observations.containsKey(id));
     observations[id] = SemanticsNodeUpdateObservation(
-      id: id,
-      flags: flags,
-      actions: actions,
-      maxValueLength: maxValueLength,
-      currentValueLength: currentValueLength,
-      textSelectionBase: textSelectionBase,
-      textSelectionExtent: textSelectionExtent,
-      platformViewId: platformViewId,
-      scrollChildren: scrollChildren,
-      scrollIndex: scrollIndex,
-      scrollPosition: scrollPosition,
-      scrollExtentMax: scrollExtentMax,
-      scrollExtentMin: scrollExtentMin,
-      elevation: elevation,
-      thickness: thickness,
-      rect: rect,
       label: label,
+      labelAttributes: labelAttributes,
       hint: hint,
+      hintAttributes: hintAttributes,
       value: value,
-      increasedValue: increasedValue,
-      decreasedValue: decreasedValue,
-      textDirection: textDirection,
-      transform: transform,
+      valueAttributes: valueAttributes,
       childrenInTraversalOrder: childrenInTraversalOrder,
-      childrenInHitTestOrder: childrenInHitTestOrder,
-      additionalActions: additionalActions,
     );
   }
+
+  @override
+  void updateCustomAction({required int id, String? label, String? hint, int overrideId = -1}) =>
+    _builder.updateCustomAction(id: id, label: label, hint: hint, overrideId: overrideId);
+
+  @override
+  ui.SemanticsUpdate build() => _builder.build();
 }
 
 class SemanticsNodeUpdateObservation {
   const SemanticsNodeUpdateObservation({
-    required this.id,
-    required this.flags,
-    required this.actions,
-    required this.maxValueLength,
-    required this.currentValueLength,
-    required this.textSelectionBase,
-    required this.textSelectionExtent,
-    required this.platformViewId,
-    required this.scrollChildren,
-    required this.scrollIndex,
-    required this.scrollPosition,
-    required this.scrollExtentMax,
-    required this.scrollExtentMin,
-    required this.elevation,
-    required this.thickness,
-    required this.rect,
     required this.label,
-    required this.hint,
+    this.labelAttributes,
     required this.value,
-    required this.increasedValue,
-    required this.decreasedValue,
-    this.textDirection,
-    required this.transform,
+    this.valueAttributes,
+    required this.hint,
+    this.hintAttributes,
     required this.childrenInTraversalOrder,
-    required this.childrenInHitTestOrder,
-    required this.additionalActions,
   });
 
-  final int id;
-  final int flags;
-  final int actions;
-  final int maxValueLength;
-  final int currentValueLength;
-  final int textSelectionBase;
-  final int textSelectionExtent;
-  final int platformViewId;
-  final int scrollChildren;
-  final int scrollIndex;
-  final double scrollPosition;
-  final double scrollExtentMax;
-  final double scrollExtentMin;
-  final double elevation;
-  final double thickness;
-  final Rect rect;
   final String label;
-  final String hint;
+  final List<StringAttribute>? labelAttributes;
   final String value;
-  final String increasedValue;
-  final String decreasedValue;
-  final TextDirection? textDirection;
-  final Float64List transform;
+  final List<StringAttribute>? valueAttributes;
+  final String hint;
+  final List<StringAttribute>? hintAttributes;
   final Int32List childrenInTraversalOrder;
-  final Int32List childrenInHitTestOrder;
-  final Int32List additionalActions;
 }

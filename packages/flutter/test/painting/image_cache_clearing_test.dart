@@ -12,9 +12,9 @@ import '../image_data.dart';
 import '../rendering/rendering_tester.dart';
 
 void main() {
-  TestRenderingFlutterBinding();
+  TestRenderingFlutterBinding.ensureInitialized();
 
-  test('Clearing images while they\'re pending does not crash', () async {
+  test("Clearing images while they're pending does not crash", () async {
     final Uint8List bytes = Uint8List.fromList(kTransparentImage);
     final MemoryImage memoryImage = MemoryImage(bytes);
     final ImageStream stream = memoryImage.resolve(ImageConfiguration.empty);
@@ -23,9 +23,9 @@ void main() {
     stream.addListener(ImageStreamListener(
       (ImageInfo image, bool synchronousCall) {
         completer.complete();
-      }
+      },
     ));
-    imageCache!.clearLiveImages();
+    imageCache.clearLiveImages();
     await completer.future;
   });
 }

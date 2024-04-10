@@ -5,19 +5,14 @@
 import 'dart:ui' show lerpDouble;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/widgets.dart';
 
 class CutCornersBorder extends OutlineInputBorder {
   const CutCornersBorder({
-    BorderSide borderSide = BorderSide.none,
-    BorderRadius borderRadius = const BorderRadius.all(Radius.circular(2.0)),
+    super.borderSide = BorderSide.none,
+    super.borderRadius = const BorderRadius.all(Radius.circular(2.0)),
     this.cut = 7.0,
-    double gapPadding = 2.0,
-  }) : super(
-    borderSide: borderSide,
-    borderRadius: borderRadius,
-    gapPadding: gapPadding,
-  );
+    super.gapPadding = 2.0,
+  });
 
   @override
   CutCornersBorder copyWith({
@@ -117,7 +112,7 @@ class CutCornersBorder extends OutlineInputBorder {
           canvas.drawPath(path, paint);
           break;
         }
-        default:
+        case null:
           break;
       }
     }

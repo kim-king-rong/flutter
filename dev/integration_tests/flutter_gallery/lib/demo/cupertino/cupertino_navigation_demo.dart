@@ -32,7 +32,7 @@ const List<String> coolColorNames = <String>[
 const int _kChildCount = 50;
 
 class CupertinoNavigationDemo extends StatelessWidget {
-  CupertinoNavigationDemo({ this.randomSeed })
+  CupertinoNavigationDemo({ super.key, this.randomSeed })
       : colorItems = List<Color>.generate(_kChildCount, (int index) {
           return coolColors[math.Random(randomSeed).nextInt(coolColors.length)];
         }) ,
@@ -48,9 +48,9 @@ class CupertinoNavigationDemo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
+    return PopScope(
       // Prevent swipe popping of this page. Use explicit exit buttons only.
-      onWillPop: () => Future<bool>.value(true),
+      canPop: false,
       child: DefaultTextStyle(
         style: CupertinoTheme.of(context).textTheme.textStyle,
         child: CupertinoTabScaffold(
@@ -85,12 +85,12 @@ class CupertinoNavigationDemo extends StatelessWidget {
                 );
               case 1:
                 return CupertinoTabView(
-                  builder: (BuildContext context) => CupertinoDemoTab2(),
+                  builder: (BuildContext context) => const CupertinoDemoTab2(),
                   defaultTitle: 'Support Chat',
                 );
               case 2:
                 return CupertinoTabView(
-                  builder: (BuildContext context) => CupertinoDemoTab3(),
+                  builder: (BuildContext context) => const CupertinoDemoTab3(),
                   defaultTitle: 'Account',
                 );
             }
@@ -104,7 +104,7 @@ class CupertinoNavigationDemo extends StatelessWidget {
 }
 
 class ExitButton extends StatelessWidget {
-  const ExitButton();
+  const ExitButton({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -112,8 +112,8 @@ class ExitButton extends StatelessWidget {
       padding: EdgeInsets.zero,
       child: const Tooltip(
         message: 'Back',
-        child: Text('Exit'),
         excludeFromSemantics: true,
+        child: Text('Exit'),
       ),
       onPressed: () {
         // The demo is on the root navigator.
@@ -134,6 +134,7 @@ final Widget trailingButtons = Row(
 
 class CupertinoDemoTab1 extends StatelessWidget {
   const CupertinoDemoTab1({
+    super.key,
     this.colorItems,
     this.colorNameItems,
     this.randomSeed,
@@ -184,6 +185,7 @@ class CupertinoDemoTab1 extends StatelessWidget {
 
 class Tab1RowItem extends StatelessWidget {
   const Tab1RowItem({
+    super.key,
     this.index,
     this.lastItem,
     this.color,
@@ -212,7 +214,7 @@ class Tab1RowItem extends StatelessWidget {
           ),
         ));
       },
-      child: Container(
+      child: ColoredBox(
         color: CupertinoDynamicColor.resolve(CupertinoColors.systemBackground, context),
         child: SafeArea(
           top: false,
@@ -287,7 +289,7 @@ class Tab1RowItem extends StatelessWidget {
 }
 
 class Tab1ItemPage extends StatefulWidget {
-  const Tab1ItemPage({this.color, this.colorName, this.index, this.randomSeed});
+  const Tab1ItemPage({super.key, this.color, this.colorName, this.index, this.randomSeed});
 
   final Color? color;
   final String? colorName;
@@ -299,21 +301,15 @@ class Tab1ItemPage extends StatefulWidget {
 }
 
 class Tab1ItemPageState extends State<Tab1ItemPage> {
-  @override
-  void initState() {
-    super.initState();
-    relatedColors = List<Color>.generate(10, (int index) {
-      final math.Random random = math.Random(widget.randomSeed);
-      return Color.fromARGB(
-        255,
-        (widget.color!.red + random.nextInt(100) - 50).clamp(0, 255),
-        (widget.color!.green + random.nextInt(100) - 50).clamp(0, 255),
-        (widget.color!.blue + random.nextInt(100) - 50).clamp(0, 255),
-      );
-    });
-  }
-
-  late List<Color> relatedColors;
+  late final List<Color> relatedColors = List<Color>.generate(10, (int index) {
+    final math.Random random = math.Random(widget.randomSeed);
+    return Color.fromARGB(
+      255,
+      (widget.color!.red + random.nextInt(100) - 50).clamp(0, 255),
+      (widget.color!.green + random.nextInt(100) - 50).clamp(0, 255),
+      (widget.color!.blue + random.nextInt(100) - 50).clamp(0, 255),
+    );
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -330,7 +326,6 @@ class Tab1ItemPageState extends State<Tab1ItemPage> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: Row(
-                mainAxisSize: MainAxisSize.max,
                 children: <Widget>[
                   Container(
                     height: 128.0,
@@ -441,6 +436,8 @@ class Tab1ItemPageState extends State<Tab1ItemPage> {
 }
 
 class CupertinoDemoTab2 extends StatelessWidget {
+  const CupertinoDemoTab2({super.key});
+
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
@@ -449,8 +446,9 @@ class CupertinoDemoTab2 extends StatelessWidget {
       ),
       child: CupertinoScrollbar(
         child: ListView(
+          primary: true,
           children: <Widget>[
-            CupertinoUserInterfaceLevel(
+            const CupertinoUserInterfaceLevel(
               data: CupertinoUserInterfaceLevelData.elevated,
               child: Tab2Header(),
             ),
@@ -463,6 +461,8 @@ class CupertinoDemoTab2 extends StatelessWidget {
 }
 
 class Tab2Header extends StatelessWidget {
+  const Tab2Header({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -589,7 +589,7 @@ enum Tab2ConversationBubbleColor {
 }
 
 class Tab2ConversationBubble extends StatelessWidget {
-  const Tab2ConversationBubble({this.text, this.color});
+  const Tab2ConversationBubble({super.key, this.text, this.color});
 
   final String? text;
   final Tab2ConversationBubbleColor? color;
@@ -603,12 +603,10 @@ class Tab2ConversationBubble extends StatelessWidget {
       case Tab2ConversationBubbleColor.gray:
         backgroundColor = CupertinoDynamicColor.resolve(CupertinoColors.systemFill, context);
         foregroundColor = CupertinoDynamicColor.resolve(CupertinoColors.label, context);
-        break;
       case Tab2ConversationBubbleColor.blue:
         backgroundColor = CupertinoTheme.of(context).primaryColor;
         foregroundColor = CupertinoColors.white;
-        break;
-      default:
+      case null:
         break;
     }
 
@@ -633,7 +631,7 @@ class Tab2ConversationBubble extends StatelessWidget {
 }
 
 class Tab2ConversationAvatar extends StatelessWidget {
-  const Tab2ConversationAvatar({this.text, this.color});
+  const Tab2ConversationAvatar({super.key, this.text, this.color});
 
   final String? text;
   final Color? color;
@@ -672,7 +670,7 @@ class Tab2ConversationAvatar extends StatelessWidget {
 }
 
 class Tab2ConversationRow extends StatelessWidget {
-  const Tab2ConversationRow({this.avatar, this.text});
+  const Tab2ConversationRow({super.key, this.avatar, this.text});
 
   final Tab2ConversationAvatar? avatar;
   final String? text;
@@ -742,6 +740,8 @@ List<Widget> buildTab2Conversation() {
 }
 
 class CupertinoDemoTab3 extends StatelessWidget {
+  const CupertinoDemoTab3({super.key});
+
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
@@ -755,7 +755,7 @@ class CupertinoDemoTab3 extends StatelessWidget {
               Navigator.of(context, rootNavigator: true).push(
                 CupertinoPageRoute<bool>(
                   fullscreenDialog: true,
-                  builder: (BuildContext context) => Tab3Dialog(),
+                  builder: (BuildContext context) => const Tab3Dialog(),
                 ),
               );
             },
@@ -792,13 +792,15 @@ class CupertinoDemoTab3 extends StatelessWidget {
 }
 
 class Tab3Dialog extends StatelessWidget {
+  const Tab3Dialog({super.key});
+
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
       navigationBar: CupertinoNavigationBar(
         leading: CupertinoButton(
-          child: const Text('Cancel'),
           padding: EdgeInsets.zero,
+          child: const Text('Cancel'),
           onPressed: () {
             Navigator.of(context).pop(false);
           },

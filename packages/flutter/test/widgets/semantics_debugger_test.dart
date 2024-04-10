@@ -2,11 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'dart:ui' show window;
-
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/widgets.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -129,12 +126,13 @@ void main() {
                 child: Stack(
                   children: <Widget>[
                     Positioned(
-                        key: key,
-                        left: 0.0,
-                        top: 0.0,
-                        width: 100.0,
-                        height: 100.0,
-                        child: Semantics(label: 'label2', textDirection: TextDirection.ltr)),
+                      key: key,
+                      left: 0.0,
+                      top: 0.0,
+                      width: 100.0,
+                      height: 100.0,
+                      child: Semantics(label: 'label2', textDirection: TextDirection.ltr),
+                    ),
                     Semantics(label: 'label3', textDirection: TextDirection.ltr),
                     Semantics(label: 'label4', textDirection: TextDirection.ltr),
                   ],
@@ -178,11 +176,11 @@ void main() {
       ),
     );
 
-    await tester.tap(find.text('TOP'));
+    await tester.tap(find.text('TOP'), warnIfMissed: false); // hitting the debugger
     expect(log, equals(<String>['top']));
     log.clear();
 
-    await tester.tap(find.text('BOTTOM'));
+    await tester.tap(find.text('BOTTOM'), warnIfMissed: false); // hitting the debugger
     expect(log, equals(<String>['bottom']));
     log.clear();
   });
@@ -218,11 +216,11 @@ void main() {
       ),
     );
 
-    await tester.tap(find.text('TOP'));
+    await tester.tap(find.text('TOP'), warnIfMissed: false); // hitting the debugger
     expect(log, equals(<String>['top']));
     log.clear();
 
-    await tester.tap(find.text('BOTTOM'));
+    await tester.tap(find.text('BOTTOM'), warnIfMissed: false); // hitting the debugger
     expect(log, equals(<String>[]));
     log.clear();
   });
@@ -249,22 +247,22 @@ void main() {
 
     expect(tester.getTopLeft(find.byKey(childKey)).dy, equals(0.0));
 
-    await tester.fling(find.byType(ListView), const Offset(0.0, -200.0), 200.0);
+    await tester.fling(find.byType(ListView), const Offset(0.0, -200.0), 200.0, warnIfMissed: false); // hitting the debugger);
     await tester.pump();
 
     expect(tester.getTopLeft(find.byKey(childKey)).dy, equals(-480.0));
 
-    await tester.fling(find.byType(ListView), const Offset(200.0, 0.0), 200.0);
+    await tester.fling(find.byType(ListView), const Offset(200.0, 0.0), 200.0, warnIfMissed: false); // hitting the debugger);
     await tester.pump();
 
     expect(tester.getTopLeft(find.byKey(childKey)).dy, equals(-480.0));
 
-    await tester.fling(find.byType(ListView), const Offset(-200.0, 0.0), 200.0);
+    await tester.fling(find.byType(ListView), const Offset(-200.0, 0.0), 200.0, warnIfMissed: false); // hitting the debugger);
     await tester.pump();
 
     expect(tester.getTopLeft(find.byKey(childKey)).dy, equals(-480.0));
 
-    await tester.fling(find.byType(ListView), const Offset(0.0, 200.0), 200.0);
+    await tester.fling(find.byType(ListView), const Offset(0.0, 200.0), 200.0, warnIfMissed: false); // hitting the debugger);
     await tester.pump();
 
     expect(tester.getTopLeft(find.byKey(childKey)).dy, equals(0.0));
@@ -288,7 +286,7 @@ void main() {
       ),
     );
 
-    await tester.longPress(find.text('target'));
+    await tester.longPress(find.text('target'), warnIfMissed: false); // hitting the debugger
     expect(didLongPress, isTrue);
   });
 
@@ -296,26 +294,28 @@ void main() {
     double value = 0.75;
 
     await tester.pumpWidget(
-      Directionality(
-        textDirection: TextDirection.ltr,
-        child: SemanticsDebugger(
-          child: Directionality(
-            textDirection: TextDirection.ltr,
-            child: MediaQuery(
-              data: MediaQueryData.fromWindow(window),
-              child: Material(
-                child: Center(
-                  child: Slider(
-                    value: value,
-                    onChanged: (double newValue) {
-                      value = newValue;
-                    },
+      MaterialApp(
+        home: Directionality(
+          textDirection: TextDirection.ltr,
+          child: SemanticsDebugger(
+            child: Directionality(
+              textDirection: TextDirection.ltr,
+              child: MediaQuery(
+                data: MediaQueryData.fromView(tester.view),
+                child: Material(
+                  child: Center(
+                    child: Slider(
+                      value: value,
+                      onChanged: (double newValue) {
+                        value = newValue;
+                      },
+                    ),
                   ),
                 ),
               ),
             ),
           ),
-        ),
+        )
       ),
     );
 
@@ -324,9 +324,18 @@ void main() {
     // it won't trigger. The actual distance moved doesn't matter since this is
     // interpreted as a gesture by the semantics debugger and sent to the widget
     // as a semantic action that always moves by 10% of the complete track.
-    await tester.fling(find.byType(Slider), const Offset(-100.0, 0.0), 2000.0);
-    expect(value, equals(0.70));
-  });
+    await tester.fling(find.byType(Slider), const Offset(-100.0, 0.0), 2000.0, warnIfMissed: false); // hitting the debugger
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.iOS:
+      case TargetPlatform.macOS:
+        expect(value, equals(0.65));
+      case TargetPlatform.linux:
+      case TargetPlatform.windows:
+      case TargetPlatform.android:
+      case TargetPlatform.fuchsia:
+        expect(value, equals(0.70));
+    }
+  }, variant: TargetPlatformVariant.all());
 
   testWidgets('SemanticsDebugger checkbox', (WidgetTester tester) async {
     final Key keyTop = UniqueKey();
@@ -360,12 +369,12 @@ void main() {
       ),
     );
 
-    await tester.tap(find.byKey(keyTop));
+    await tester.tap(find.byKey(keyTop), warnIfMissed: false); // hitting the debugger
     expect(valueTop, isTrue);
     valueTop = false;
     expect(valueTop, isFalse);
 
-    await tester.tap(find.byKey(keyBottom));
+    await tester.tap(find.byKey(keyBottom), warnIfMissed: false); // hitting the debugger
     expect(valueTop, isFalse);
   });
 
@@ -441,6 +450,33 @@ void main() {
     );
   });
 
+  testWidgets('SemanticsDebugger ignores duplicated label and tooltip for Android', (WidgetTester tester) async {
+    final Key child = UniqueKey();
+    final Key debugger = UniqueKey();
+    final bool isPlatformAndroid = defaultTargetPlatform == TargetPlatform.android;
+    await tester.pumpWidget(
+      Directionality(
+        textDirection: TextDirection.ltr,
+        child: SemanticsDebugger(
+          key: debugger,
+          child: Material(
+            child: Semantics(
+              container: true,
+              key: child,
+              label: 'text',
+              tooltip: 'text',
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(
+      _getMessageShownInSemanticsDebugger(widgetKey: child, debuggerKey: debugger, tester: tester),
+      isPlatformAndroid ? 'text' : 'text\ntext',
+    );
+  }, variant: TargetPlatformVariant.all());
+
   testWidgets('SemanticsDebugger textfield', (WidgetTester tester) async {
     final UniqueKey textField = UniqueKey();
     final UniqueKey debugger = UniqueKey();
@@ -462,6 +498,7 @@ void main() {
     final RenderObject renderTextfield = tester.renderObject(find.descendant(of: find.byKey(textField), matching: find.byType(Semantics)).first);
 
     expect(
+      // ignore: avoid_dynamic_calls
       semanticsDebuggerPainter.getMessage(renderTextfield.debugSemantics),
       'textfield',
     );
@@ -484,7 +521,29 @@ void main() {
       ),
     );
 
+    // ignore: avoid_dynamic_calls
     expect(_getSemanticsDebuggerPainter(debuggerKey: debugger, tester: tester).labelStyle, labelStyle);
+  });
+
+  testWidgets('SemanticsDebugger label for rtl.', (WidgetTester tester) async {
+    final UniqueKey debugger = UniqueKey();
+    final Key label = UniqueKey();
+
+    await tester.pumpWidget(
+      Directionality(
+        textDirection: TextDirection.rtl,
+        child: SemanticsDebugger(
+          key: debugger,
+          child: Semantics(
+            label: 'ملصق',
+            textDirection: TextDirection.rtl,
+            key: label,
+          ),
+        ),
+      ),
+    );
+
+    expect(_getMessageShownInSemanticsDebugger(widgetKey: label, debuggerKey: debugger, tester: tester), '\u2067ملصق\u2069');
   });
 }
 
@@ -494,6 +553,7 @@ String _getMessageShownInSemanticsDebugger({
   required WidgetTester tester,
 }) {
   final dynamic semanticsDebuggerPainter = _getSemanticsDebuggerPainter(debuggerKey: debuggerKey, tester: tester);
+  // ignore: avoid_dynamic_calls
   return semanticsDebuggerPainter.getMessage(tester.renderObject(find.byKey(widgetKey)).debugSemantics) as String;
 }
 

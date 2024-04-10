@@ -17,24 +17,27 @@ import 'framework.dart';
 ///  * [BottomNavigationBar]
 ///  * <https://material.io/design/components/bottom-navigation.html>
 ///  * [CupertinoTabBar]
-///  * <https://developer.apple.com/ios/human-interface-guidelines/bars/tab-bars>
+///  * <https://developer.apple.com/design/human-interface-guidelines/tab-bars/>
 class BottomNavigationBarItem {
   /// Creates an item that is used with [BottomNavigationBar.items].
   ///
   /// The argument [icon] should not be null and the argument [label] should not be null when used in a Material Design's [BottomNavigationBar].
   const BottomNavigationBarItem({
+    this.key,
     required this.icon,
-    @Deprecated(
-      'Use "label" instead, as it allows for an improved text-scaling experience. '
-      'This feature was deprecated after v1.19.0.'
-    )
-    this.title,
     this.label,
     Widget? activeIcon,
     this.backgroundColor,
-  }) : activeIcon = activeIcon ?? icon,
-       assert(label == null || title == null),
-       assert(icon != null);
+    this.tooltip,
+  }) : activeIcon = activeIcon ?? icon;
+
+  /// A key to be passed through to the resultant widget.
+  ///
+  /// This allows the identification of different [BottomNavigationBarItem]s through their keys.
+  ///
+  /// When changing the number of bar items in response to a bar item being tapped, giving
+  /// each item a key will allow the inkwell / splash animation to be correctly positioned.
+  final Key? key;
 
   /// The icon of the item.
   ///
@@ -66,20 +69,9 @@ class BottomNavigationBarItem {
   ///  * [BottomNavigationBarItem.icon], for a description of how to pair icons.
   final Widget activeIcon;
 
-  /// The title of the item. If the title is not provided only the icon will be shown when not used in a Material Design [BottomNavigationBar].
-  ///
-  /// This field is deprecated, use [label] instead.
-  @Deprecated(
-    'Use "label" instead, as it allows for an improved text-scaling experience. '
-    'This feature was deprecated after v1.19.0.'
-  )
-  final Widget? title;
-
   /// The text label for this [BottomNavigationBarItem].
   ///
-  /// This will be used to create a [Text] widget to put in the bottom navigation bar,
-  /// and in Material Design [BottomNavigationBar]s, this will be used to display
-  /// a tooltip on long press of an item in the [BottomNavigationBar].
+  /// This will be used to create a [Text] widget to put in the bottom navigation bar.
   final String? label;
 
   /// The color of the background radial animation for material [BottomNavigationBar].
@@ -96,4 +88,11 @@ class BottomNavigationBarItem {
   ///  * [Icon.color] and [ImageIcon.color] to control the foreground color of
   ///    the icons themselves.
   final Color? backgroundColor;
+
+  /// The text to display in the [Tooltip] for this [BottomNavigationBarItem].
+  ///
+  /// A [Tooltip] will only appear on this item if [tooltip] is set to a non-empty string.
+  ///
+  /// Defaults to null, in which case the tooltip is not shown.
+  final String? tooltip;
 }

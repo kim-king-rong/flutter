@@ -28,16 +28,15 @@ void main() {
       matchesGoldenFile('cupertino_navigation_demo.screen.1.png'),
     );
 
+    await tester.pump(); // Need a new frame after loading fonts to refresh layout.
     // Tap some row to go to the next page.
     await tester.tap(find.text('Buy this cool color').first);
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pump(const Duration(milliseconds: 600));
 
     await expectLater(
       find.byType(CupertinoNavigationDemo),
       matchesGoldenFile('cupertino_navigation_demo.screen.2.png'),
     );
-  },
-  // TODO(egarciad): https://github.com/flutter/flutter/issues/69994
-  skip: true);
+  });
 }

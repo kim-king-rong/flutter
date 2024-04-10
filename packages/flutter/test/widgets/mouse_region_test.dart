@@ -3,20 +3,20 @@
 // found in the LICENSE file.
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter/gestures.dart';
 
 class HoverClient extends StatefulWidget {
   const HoverClient({
-    Key? key,
+    super.key,
     this.onHover,
     this.child,
     this.onEnter,
     this.onExit,
-  }) : super(key: key);
+  });
 
   final ValueChanged<bool>? onHover;
   final Widget? child;
@@ -29,21 +29,13 @@ class HoverClient extends StatefulWidget {
 
 class HoverClientState extends State<HoverClient> {
   void _onExit(PointerExitEvent details) {
-    if (widget.onExit != null) {
-      widget.onExit!();
-    }
-    if (widget.onHover != null) {
-      widget.onHover!(false);
-    }
+    widget.onExit?.call();
+    widget.onHover?.call(false);
   }
 
   void _onEnter(PointerEnterEvent details) {
-    if (widget.onEnter != null) {
-      widget.onEnter!();
-    }
-    if (widget.onHover != null) {
-      widget.onHover!(true);
-    }
+    widget.onEnter?.call();
+    widget.onHover?.call(true);
   }
 
   @override
@@ -57,13 +49,13 @@ class HoverClientState extends State<HoverClient> {
 }
 
 class HoverFeedback extends StatefulWidget {
-  const HoverFeedback({Key? key, this.onEnter, this.onExit}) : super(key: key);
+  const HoverFeedback({super.key, this.onEnter, this.onExit});
 
   final VoidCallback? onEnter;
   final VoidCallback? onExit;
 
   @override
-  _HoverFeedbackState createState() => _HoverFeedbackState();
+  State<HoverFeedback> createState() => _HoverFeedbackState();
 }
 
 class _HoverFeedbackState extends State<HoverFeedback> {
@@ -84,6 +76,142 @@ class _HoverFeedbackState extends State<HoverFeedback> {
 }
 
 void main() {
+  // Regression test for https://github.com/flutter/flutter/issues/73330
+  testWidgets('hitTestBehavior test - HitTestBehavior.deferToChild/opaque', (WidgetTester tester) async {
+    bool onEnter = false;
+    await tester.pumpWidget(Center(
+      child: MouseRegion(
+        hitTestBehavior: HitTestBehavior.deferToChild,
+        onEnter: (_) => onEnter = true,
+      ),
+    ));
+
+    final TestGesture gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await gesture.addPointer(location: Offset.zero);
+    await tester.pump();
+
+    // The child is null, so `onEnter` does not trigger.
+    expect(onEnter, false);
+
+    // Update to the default value `HitTestBehavior.opaque`
+    await tester.pumpWidget(Center(
+      child: MouseRegion(
+        onEnter: (_) => onEnter = true,
+      ),
+    ));
+
+    expect(onEnter, true);
+  });
+
+  testWidgets('hitTestBehavior test - HitTestBehavior.deferToChild and non-opaque', (WidgetTester tester) async {
+    bool onEnterRegion1 = false;
+    bool onEnterRegion2 = false;
+    await tester.pumpWidget(Directionality(
+      textDirection: TextDirection.ltr,
+      child: Stack(
+        children: <Widget>[
+          SizedBox(
+            width: 50.0,
+            height: 50.0,
+            child: MouseRegion(
+              onEnter: (_) => onEnterRegion1 = true,
+            ),
+          ),
+          SizedBox(
+            width: 50.0,
+            height: 50.0,
+            child: MouseRegion(
+              opaque: false,
+              hitTestBehavior: HitTestBehavior.deferToChild,
+              onEnter: (_) => onEnterRegion2 = true,
+              child: Container(
+                color: const Color.fromARGB(0xff, 0xff, 0x10, 0x19),
+                width: 50.0,
+                height: 50.0,
+              ),
+            ),
+          ),
+        ],
+      ),
+    ));
+
+    final TestGesture gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await gesture.addPointer(location: Offset.zero);
+    await tester.pump();
+
+    expect(onEnterRegion2, true);
+    expect(onEnterRegion1, true);
+  });
+
+  testWidgets('hitTestBehavior test - HitTestBehavior.translucent', (WidgetTester tester) async {
+    bool onEnterRegion1 = false;
+    bool onEnterRegion2 = false;
+    await tester.pumpWidget(Directionality(
+      textDirection: TextDirection.ltr,
+      child: Stack(
+        children: <Widget>[
+          SizedBox(
+            width: 50.0,
+            height: 50.0,
+            child: MouseRegion(
+              onEnter: (_) => onEnterRegion1 = true,
+            ),
+          ),
+          SizedBox(
+            width: 50.0,
+            height: 50.0,
+            child: MouseRegion(
+              hitTestBehavior: HitTestBehavior.translucent,
+              onEnter: (_) => onEnterRegion2 = true,
+            ),
+          ),
+        ],
+      ),
+    ));
+
+    final TestGesture gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await gesture.addPointer(location: Offset.zero);
+    await tester.pump();
+
+    expect(onEnterRegion2, true);
+    expect(onEnterRegion1, true);
+  });
+
+  testWidgets('onEnter and onExit can be triggered with mouse buttons pressed', (WidgetTester tester) async {
+    PointerEnterEvent? enter;
+    PointerExitEvent? exit;
+    await tester.pumpWidget(Center(
+      child: MouseRegion(
+        child: Container(
+          color: const Color.fromARGB(0xff, 0xff, 0x00, 0x00),
+          width: 100.0,
+          height: 100.0,
+        ),
+        onEnter: (PointerEnterEvent details) => enter = details,
+        onExit: (PointerExitEvent details) => exit = details,
+      ),
+    ));
+
+    final TestGesture gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await gesture.addPointer(location: Offset.zero);
+    await gesture.down(Offset.zero); // Press the mouse button.
+    await tester.pump();
+    enter = null;
+    exit = null;
+    // Trigger the enter event.
+    await gesture.moveTo(const Offset(400.0, 300.0));
+    expect(enter, isNotNull);
+    expect(enter!.position, equals(const Offset(400.0, 300.0)));
+    expect(enter!.localPosition, equals(const Offset(50.0, 50.0)));
+    expect(exit, isNull);
+
+    // Trigger the exit event.
+    await gesture.moveTo(const Offset(1.0, 1.0));
+    expect(exit, isNotNull);
+    expect(exit!.position, equals(const Offset(1.0, 1.0)));
+    expect(exit!.localPosition, equals(const Offset(-349.0, -249.0)));
+  });
+
   testWidgets('detects pointer enter', (WidgetTester tester) async {
     PointerEnterEvent? enter;
     PointerHoverEvent? move;
@@ -102,7 +230,6 @@ void main() {
     ));
     final TestGesture gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
     await gesture.addPointer(location: Offset.zero);
-    addTearDown(gesture.removePointer);
     await tester.pump();
     move = null;
     enter = null;
@@ -135,7 +262,6 @@ void main() {
     ));
     final TestGesture gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
     await gesture.addPointer(location: Offset.zero);
-    addTearDown(gesture.removePointer);
     await gesture.moveTo(const Offset(400.0, 300.0));
     await tester.pump();
     move = null;
@@ -168,7 +294,6 @@ void main() {
 
     final TestGesture gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
     await gesture.addPointer(location: const Offset(400, 300));
-    addTearDown(gesture.removePointer);
     expect(move, isNull);
     expect(enter, isNotNull);
     expect(enter!.position, equals(const Offset(400.0, 300.0)));
@@ -226,7 +351,6 @@ void main() {
     ));
     final TestGesture gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
     await gesture.addPointer(location: Offset.zero);
-    addTearDown(gesture.removePointer);
     await gesture.moveTo(const Offset(400.0, 300.0));
     await tester.pump();
     expect(enter, isNull);
@@ -268,7 +392,6 @@ void main() {
     ));
     final TestGesture gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
     await gesture.addPointer(location: Offset.zero);
-    addTearDown(gesture.removePointer);
     await gesture.moveTo(const Offset(400.0, 300.0));
     await tester.pump();
     move = null;
@@ -303,7 +426,6 @@ void main() {
     ));
     final TestGesture gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
     await gesture.addPointer(location: const Offset(401.0, 301.0));
-    addTearDown(gesture.removePointer);
     await tester.pump();
     expect(enter, isNull);
     expect(move, isNull);
@@ -346,7 +468,6 @@ void main() {
     ));
     final TestGesture gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
     await gesture.addPointer(location: const Offset(400, 300));
-    addTearDown(gesture.removePointer);
     await tester.pump();
     enter = null;
     move = null;
@@ -387,9 +508,8 @@ void main() {
         onExit: (PointerExitEvent details) => exit = details,
       ),
     ));
-    final TestGesture gesture = await tester.createGesture(kind: PointerDeviceKind.touch);
+    final TestGesture gesture = await tester.createGesture();
     await gesture.addPointer(location: Offset.zero);
-    addTearDown(gesture.removePointer);
     await tester.pump();
     move = null;
     enter = null;
@@ -422,13 +542,11 @@ void main() {
 
     await tester.pumpWidget(Container());
     final TestGesture gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
-    addTearDown(gesture.removePointer);
     await gesture.moveTo(const Offset(400.0, 0.0));
     await tester.pump();
     await tester.pumpWidget(
       Column(
         mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.center,
         children: <Widget>[
           MouseRegion(
             onEnter: (PointerEnterEvent details) => enter1.add(details),
@@ -499,13 +617,11 @@ void main() {
 
     await tester.pumpWidget(Container());
     final TestGesture gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
-    addTearDown(gesture.removePointer);
     await gesture.moveTo(const Offset(400.0, 0.0));
     await tester.pump();
     await tester.pumpWidget(
       Column(
         mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.center,
         children: <Widget>[
           MouseRegion(
             key: key1,
@@ -575,25 +691,24 @@ void main() {
   });
 
   testWidgets('applies mouse cursor', (WidgetTester tester) async {
-    await tester.pumpWidget(_Scaffold(
+    await tester.pumpWidget(const _Scaffold(
       topLeft: MouseRegion(
         cursor: SystemMouseCursors.text,
-        child: Container(width: 10, height: 10),
+        child: SizedBox(width: 10, height: 10),
       ),
     ));
 
     final TestGesture gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
     await gesture.addPointer(location: const Offset(100, 100));
-    addTearDown(gesture.removePointer);
 
     await tester.pump();
-    expect(RendererBinding.instance!.mouseTracker.debugDeviceActiveCursor(1), SystemMouseCursors.basic);
+    expect(RendererBinding.instance.mouseTracker.debugDeviceActiveCursor(1), SystemMouseCursors.basic);
 
     await gesture.moveTo(const Offset(5, 5));
-    expect(RendererBinding.instance!.mouseTracker.debugDeviceActiveCursor(1), SystemMouseCursors.text);
+    expect(RendererBinding.instance.mouseTracker.debugDeviceActiveCursor(1), SystemMouseCursors.text);
 
     await gesture.moveTo(const Offset(100, 100));
-    expect(RendererBinding.instance!.mouseTracker.debugDeviceActiveCursor(1), SystemMouseCursors.basic);
+    expect(RendererBinding.instance.mouseTracker.debugDeviceActiveCursor(1), SystemMouseCursors.basic);
   });
 
   testWidgets('MouseRegion uses updated callbacks', (WidgetTester tester) async {
@@ -606,14 +721,14 @@ void main() {
       return Container(
         alignment: Alignment.topLeft,
         child: MouseRegion(
+          onEnter: onEnter,
+          onHover: onHover,
+          onExit: onExit,
           child: Container(
             color: const Color.fromARGB(0xff, 0xff, 0x00, 0x00),
             width: 100.0,
             height: 100.0,
           ),
-          onEnter: onEnter,
-          onHover: onHover,
-          onExit: onExit,
         ),
       );
     }
@@ -630,7 +745,6 @@ void main() {
 
     final TestGesture gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
     await gesture.addPointer(location: const Offset(150.0, 150.0));
-    addTearDown(gesture.removePointer);
 
     // Start outside, move inside, then move outside
     await gesture.moveTo(const Offset(150.0, 150.0));
@@ -663,7 +777,7 @@ void main() {
     await tester.pumpWidget(
       MouseRegion(
         onEnter: (PointerEnterEvent _) {},
-        child: const Opacity(opacity: 0.5, child: Placeholder()),
+        child: const RepaintBoundary(child: Placeholder()),
       ),
     );
 
@@ -725,7 +839,6 @@ void main() {
 
     final TestGesture gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
     await gesture.addPointer();
-    addTearDown(gesture.removePointer);
     await gesture.moveTo(topLeft - const Offset(1, 1));
     await tester.pump();
     expect(events, isEmpty);
@@ -753,7 +866,6 @@ void main() {
     // Pretend that we have a mouse connected.
     final TestGesture gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
     await gesture.addPointer();
-    addTearDown(gesture.removePointer);
 
     await tester.pumpWidget(
       Transform.scale(
@@ -787,7 +899,6 @@ void main() {
 
   testWidgets("Callbacks aren't called during build", (WidgetTester tester) async {
     final TestGesture gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
-    addTearDown(gesture.removePointer);
     await gesture.addPointer(location: Offset.zero);
 
     int numEntrances = 0;
@@ -795,10 +906,11 @@ void main() {
 
     await tester.pumpWidget(
       Center(
-          child: HoverFeedback(
-        onEnter: () { numEntrances += 1; },
-        onExit: () { numExits += 1; },
-      )),
+        child: HoverFeedback(
+          onEnter: () { numEntrances += 1; },
+          onExit: () { numExits += 1; },
+        ),
+      ),
     );
 
     await gesture.moveTo(tester.getCenter(find.byType(Text)));
@@ -816,10 +928,11 @@ void main() {
 
     await tester.pumpWidget(
       Center(
-          child: HoverFeedback(
-        onEnter: () { numEntrances += 1; },
-        onExit: () { numExits += 1; },
-      )),
+        child: HoverFeedback(
+          onEnter: () { numEntrances += 1; },
+          onExit: () { numExits += 1; },
+        ),
+      ),
     );
     await tester.pump();
     expect(numEntrances, equals(2));
@@ -830,18 +943,18 @@ void main() {
     final GlobalKey feedbackKey = GlobalKey();
     final TestGesture gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
     await gesture.addPointer();
-    addTearDown(gesture.removePointer);
 
     int numEntrances = 0;
     int numExits = 0;
 
     await tester.pumpWidget(
       Center(
-          child: HoverFeedback(
-        key: feedbackKey,
-        onEnter: () { numEntrances += 1; },
-        onExit: () { numExits += 1; },
-      )),
+        child: HoverFeedback(
+          key: feedbackKey,
+          onEnter: () { numEntrances += 1; },
+          onExit: () { numExits += 1; },
+        ),
+      ),
     );
 
     await gesture.moveTo(tester.getCenter(find.byType(Text)));
@@ -852,12 +965,10 @@ void main() {
 
     await tester.pumpWidget(
       Center(
-        child: Container(
-          child: HoverFeedback(
-            key: feedbackKey,
-            onEnter: () { numEntrances += 1; },
-            onExit: () { numExits += 1; },
-          ),
+        child: HoverFeedback(
+          key: feedbackKey,
+          onEnter: () { numEntrances += 1; },
+          onExit: () { numExits += 1; },
         ),
       ),
     );
@@ -921,11 +1032,10 @@ void main() {
   });
 
   testWidgets('detects pointer enter with closure arguments', (WidgetTester tester) async {
-    await tester.pumpWidget(_HoverClientWithClosures());
+    await tester.pumpWidget(const _HoverClientWithClosures());
     expect(find.text('not hovering'), findsOneWidget);
 
     final TestGesture gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
-    addTearDown(gesture.removePointer);
     await gesture.addPointer();
     // Move to a position out of MouseRegion
     await gesture.moveTo(tester.getBottomRight(find.byType(MouseRegion)) + const Offset(10, -10));
@@ -961,7 +1071,6 @@ void main() {
 
     final TestGesture gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
     await gesture.addPointer();
-    addTearDown(gesture.removePointer);
 
     await tester.pumpWidget(
       Directionality(
@@ -979,12 +1088,11 @@ void main() {
     expect(paintCount, 1);
   });
 
-  testWidgets('A MouseRegion mounted under the pointer should should take effect in the next postframe', (WidgetTester tester) async {
+  testWidgets('A MouseRegion mounted under the pointer should take effect in the next postframe', (WidgetTester tester) async {
     bool hovered = false;
 
     final TestGesture gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
     await gesture.addPointer(location: const Offset(5, 5));
-    addTearDown(gesture.removePointer);
 
     await tester.pumpWidget(
       StatefulBuilder(builder: (BuildContext context, StateSetter setState) {
@@ -1027,7 +1135,6 @@ void main() {
 
     final TestGesture gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
     await gesture.addPointer(location: const Offset(5, 5));
-    addTearDown(gesture.removePointer);
 
     await tester.pumpWidget(
       StatefulBuilder(builder: (BuildContext context, StateSetter setState) {
@@ -1074,7 +1181,6 @@ void main() {
 
     final TestGesture gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
     await gesture.addPointer(location: const Offset(5, 5));
-    addTearDown(gesture.removePointer);
 
     await tester.pumpWidget(
       StatefulBuilder(builder: (BuildContext context, StateSetter setState) {
@@ -1085,7 +1191,7 @@ void main() {
               height: 100,
               width: 10,
               alignment: moved ? Alignment.topLeft : Alignment.bottomLeft,
-              child: Container(
+              child: SizedBox(
                 height: 10,
                 width: 10,
                 child: HoverClient(
@@ -1150,7 +1256,7 @@ void main() {
         if (opaque == null) {
           return MouseRegion(onEnter: onEnter, onHover: onHover, onExit: onExit, child: child);
         }
-        return MouseRegion(onEnter: onEnter, onHover: onHover, onExit: onExit, child: child, opaque: opaque);
+        return MouseRegion(onEnter: onEnter, onHover: onHover, onExit: onExit, opaque: opaque, child: child);
       }
 
       return Directionality(
@@ -1206,7 +1312,6 @@ void main() {
 
       final TestGesture gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
       await gesture.addPointer();
-      addTearDown(gesture.removePointer);
       await tester.pumpAndSettle();
 
       // Move to the overlapping area.
@@ -1254,7 +1359,6 @@ void main() {
 
       final TestGesture gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
       await gesture.addPointer();
-      addTearDown(gesture.removePointer);
       await tester.pumpAndSettle();
 
       // Move to the overlapping area.
@@ -1296,13 +1400,11 @@ void main() {
     testWidgets('opaque should default to true', (WidgetTester tester) async {
       final List<String> logs = <String>[];
       await tester.pumpWidget(tripleRegions(
-        opaqueC: null,
         addLog: (String log) => logs.add(log),
       ));
 
       final TestGesture gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
       await gesture.addPointer();
-      addTearDown(gesture.removePointer);
       await tester.pumpAndSettle();
 
       // Move to the overlapping area.
@@ -1337,7 +1439,7 @@ void main() {
                 ),
               ),
             ),
-            const MouseRegion(opaque: true),
+            const MouseRegion(),
           ],
         ),
       ),
@@ -1345,7 +1447,6 @@ void main() {
 
     final TestGesture gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
     await gesture.addPointer(location: const Offset(20, 20));
-    addTearDown(gesture.removePointer);
 
     await gesture.moveTo(const Offset(5, 5));
     await tester.pump();
@@ -1360,10 +1461,9 @@ void main() {
 
     final TestGesture gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
     await gesture.addPointer(location: const Offset(20, 20));
-    addTearDown(gesture.removePointer);
 
     await tester.pumpWidget(_Scaffold(
-      topLeft: Container(
+      topLeft: SizedBox(
         height: 10,
         width: 10,
         child: MouseRegion(
@@ -1384,7 +1484,7 @@ void main() {
     logs.clear();
 
     await tester.pumpWidget(_Scaffold(
-      topLeft: Container(
+      topLeft: SizedBox(
         height: 10,
         width: 10,
         child: MouseRegion(
@@ -1405,7 +1505,7 @@ void main() {
 
     // Compare: It repaints if the MouseRegion is deactivated.
     await tester.pumpWidget(_Scaffold(
-      topLeft: Container(
+      topLeft: SizedBox(
         height: 10,
         width: 10,
         child: MouseRegion(
@@ -1424,24 +1524,20 @@ void main() {
 
     final TestGesture gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
     await gesture.addPointer(location: const Offset(5, 5));
-    addTearDown(gesture.removePointer);
 
-    final PointerHoverEventListener onHover = (_) {};
-    final VoidCallback onPaintChild = () { logs.add('paint'); };
+    void handleHover(PointerHoverEvent _) {}
+    void handlePaintChild() { logs.add('paint'); }
 
     await tester.pumpWidget(_Scaffold(
-      topLeft: Container(
+      topLeft: SizedBox(
         height: 10,
         width: 10,
         child: MouseRegion(
-          opaque: true,
-          // Dummy callback so that MouseRegion stays affective after opaque
-          // turns false.
-          onHover: onHover,
-          child: CustomPaint(painter: _DelegatedPainter(onPaint: onPaintChild)),
+          onHover: handleHover,
+          child: CustomPaint(painter: _DelegatedPainter(onPaint: handlePaintChild)),
         ),
       ),
-      background: MouseRegion(onEnter: (_) { logs.add('hover-enter'); })
+      background: MouseRegion(onEnter: (_) { logs.add('hover-enter'); }),
     ));
     expect(logs, <String>['paint']);
     logs.clear();
@@ -1450,16 +1546,18 @@ void main() {
     logs.clear();
 
     await tester.pumpWidget(_Scaffold(
-      topLeft: Container(
+      topLeft: SizedBox(
         height: 10,
         width: 10,
         child: MouseRegion(
           opaque: false,
-          onHover: onHover,
-          child: CustomPaint(painter: _DelegatedPainter(onPaint: onPaintChild)),
+          // Dummy callback so that MouseRegion stays affective after opaque
+          // turns false.
+          onHover: handleHover,
+          child: CustomPaint(painter: _DelegatedPainter(onPaint: handlePaintChild)),
         ),
       ),
-      background: MouseRegion(onEnter: (_) { logs.add('hover-enter'); })
+      background: MouseRegion(onEnter: (_) { logs.add('hover-enter'); }),
     ));
 
     expect(logs, <String>['paint', 'hover-enter']);
@@ -1471,18 +1569,16 @@ void main() {
 
     final TestGesture gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
     await gesture.addPointer(location: const Offset(100, 100));
-    addTearDown(gesture.removePointer);
 
-    final VoidCallback onPaintChild = () { logPaints.add('paint'); };
+    void onPaintChild() { logPaints.add('paint'); }
 
     await tester.pumpWidget(_Scaffold(
-      topLeft: Container(
+      topLeft: SizedBox(
         height: 10,
         width: 10,
         child: MouseRegion(
           cursor: SystemMouseCursors.forbidden,
           onEnter: (_) { logEnters.add('enter'); },
-          opaque: true,
           child: CustomPaint(painter: _DelegatedPainter(onPaint: onPaintChild)),
         ),
       ),
@@ -1490,26 +1586,25 @@ void main() {
     await gesture.moveTo(const Offset(5, 5));
 
     expect(logPaints, <String>['paint']);
-    expect(RendererBinding.instance!.mouseTracker.debugDeviceActiveCursor(1), SystemMouseCursors.forbidden);
+    expect(RendererBinding.instance.mouseTracker.debugDeviceActiveCursor(1), SystemMouseCursors.forbidden);
     expect(logEnters, <String>['enter']);
     logPaints.clear();
     logEnters.clear();
 
     await tester.pumpWidget(_Scaffold(
-      topLeft: Container(
+      topLeft: SizedBox(
         height: 10,
         width: 10,
         child: MouseRegion(
           cursor: SystemMouseCursors.text,
           onEnter: (_) { logEnters.add('enter'); },
-          opaque: true,
           child: CustomPaint(painter: _DelegatedPainter(onPaint: onPaintChild)),
         ),
       ),
     ));
 
     expect(logPaints, <String>['paint']);
-    expect(RendererBinding.instance!.mouseTracker.debugDeviceActiveCursor(1), SystemMouseCursors.text);
+    expect(RendererBinding.instance.mouseTracker.debugDeviceActiveCursor(1), SystemMouseCursors.text);
     expect(logEnters, isEmpty);
     logPaints.clear();
     logEnters.clear();
@@ -1521,12 +1616,11 @@ void main() {
 
     final TestGesture gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
     await gesture.addPointer(location: const Offset(100, 100));
-    addTearDown(gesture.removePointer);
 
-    final VoidCallback onPaintChild = () { logPaints.add('paint'); };
+    void onPaintChild() { logPaints.add('paint'); }
 
     await tester.pumpWidget(_Scaffold(
-      topLeft: Container(
+      topLeft: SizedBox(
         height: 10,
         width: 10,
         child: MouseRegion(
@@ -1543,18 +1637,17 @@ void main() {
 
     expect(logPaints, <String>['paint']);
     expect(logEnters, <String>['enter']);
-    expect(RendererBinding.instance!.mouseTracker.debugDeviceActiveCursor(1), SystemMouseCursors.text);
+    expect(RendererBinding.instance.mouseTracker.debugDeviceActiveCursor(1), SystemMouseCursors.text);
     logPaints.clear();
     logEnters.clear();
 
     await tester.pumpWidget(_Scaffold(
-      topLeft: Container(
+      topLeft: SizedBox(
         height: 10,
         width: 10,
         child: MouseRegion(
           cursor: SystemMouseCursors.forbidden,
           child: MouseRegion(
-            cursor: MouseCursor.defer,
             onEnter: (_) { logEnters.add('enter'); },
             child: CustomPaint(painter: _DelegatedPainter(onPaint: onPaintChild)),
           ),
@@ -1564,19 +1657,18 @@ void main() {
 
     expect(logPaints, <String>['paint']);
     expect(logEnters, isEmpty);
-    expect(RendererBinding.instance!.mouseTracker.debugDeviceActiveCursor(1), SystemMouseCursors.forbidden);
+    expect(RendererBinding.instance.mouseTracker.debugDeviceActiveCursor(1), SystemMouseCursors.forbidden);
     logPaints.clear();
     logEnters.clear();
 
     await tester.pumpWidget(_Scaffold(
-      topLeft: Container(
+      topLeft: SizedBox(
         height: 10,
         width: 10,
         child: MouseRegion(
           cursor: SystemMouseCursors.forbidden,
           child: MouseRegion(
             cursor: SystemMouseCursors.text,
-            opaque: true,
             child: CustomPaint(painter: _DelegatedPainter(onPaint: onPaintChild)),
           ),
         ),
@@ -1584,7 +1676,7 @@ void main() {
     ));
 
     expect(logPaints, <String>['paint']);
-    expect(RendererBinding.instance!.mouseTracker.debugDeviceActiveCursor(1), SystemMouseCursors.text);
+    expect(RendererBinding.instance.mouseTracker.debugDeviceActiveCursor(1), SystemMouseCursors.text);
     expect(logEnters, isEmpty);
     logPaints.clear();
     logEnters.clear();
@@ -1597,9 +1689,9 @@ void main() {
 
     final TestGesture gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
     await gesture.addPointer(location: const Offset(100, 100));
-    addTearDown(gesture.removePointer);
-    SystemChannels.mouseCursor.setMockMethodCallHandler((_) async {
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.mouseCursor, (_) async {
       logCursors.add('cursor');
+      return null;
     });
 
     final GlobalKey key = GlobalKey();
@@ -1636,7 +1728,7 @@ void main() {
     expect(logEnters, <String>['enter']);
     expect(logExits, isEmpty);
     expect(logCursors, isNotEmpty);
-    expect(RendererBinding.instance!.mouseTracker.debugDeviceActiveCursor(1), SystemMouseCursors.click);
+    expect(RendererBinding.instance.mouseTracker.debugDeviceActiveCursor(1), SystemMouseCursors.click);
     logEnters.clear();
     logExits.clear();
     logCursors.clear();
@@ -1671,12 +1763,16 @@ void main() {
     expect(logEnters, isEmpty);
     expect(logExits, isEmpty);
     expect(logCursors, isEmpty);
-    expect(RendererBinding.instance!.mouseTracker.debugDeviceActiveCursor(1), SystemMouseCursors.click);
+    expect(RendererBinding.instance.mouseTracker.debugDeviceActiveCursor(1), SystemMouseCursors.click);
   });
 
   testWidgets("RenderMouseRegion's debugFillProperties when default", (WidgetTester tester) async {
     final DiagnosticPropertiesBuilder builder = DiagnosticPropertiesBuilder();
-    RenderMouseRegion().debugFillProperties(builder);
+
+    final RenderMouseRegion renderMouseRegion = RenderMouseRegion();
+    addTearDown(renderMouseRegion.dispose);
+
+    renderMouseRegion.debugFillProperties(builder);
 
     final List<String> description = builder.properties.where((DiagnosticsNode node) => !node.isFiltered(DiagnosticLevel.info)).map((DiagnosticsNode node) => node.toString()).toList();
 
@@ -1684,20 +1780,28 @@ void main() {
       'parentData: MISSING',
       'constraints: MISSING',
       'size: MISSING',
+      'behavior: opaque',
       'listeners: <none>',
     ]);
   });
 
   testWidgets("RenderMouseRegion's debugFillProperties when full", (WidgetTester tester) async {
     final DiagnosticPropertiesBuilder builder = DiagnosticPropertiesBuilder();
-    RenderMouseRegion(
+
+    final RenderErrorBox renderErrorBox = RenderErrorBox();
+    addTearDown(renderErrorBox.dispose);
+
+    final RenderMouseRegion renderMouseRegion = RenderMouseRegion(
       onEnter: (PointerEnterEvent event) {},
       onExit: (PointerExitEvent event) {},
       onHover: (PointerHoverEvent event) {},
       cursor: SystemMouseCursors.click,
       validForMouseTracker: false,
-      child: RenderErrorBox(),
-    ).debugFillProperties(builder);
+      child: renderErrorBox,
+    );
+    addTearDown(renderMouseRegion.dispose);
+
+    renderMouseRegion.debugFillProperties(builder);
 
     final List<String> description = builder.properties.where((DiagnosticsNode node) => !node.isFiltered(DiagnosticLevel.info)).map((DiagnosticsNode node) => node.toString()).toList();
 
@@ -1705,6 +1809,7 @@ void main() {
       'parentData: MISSING',
       'constraints: MISSING',
       'size: MISSING',
+      'behavior: opaque',
       'listeners: enter, hover, exit',
       'cursor: SystemMouseCursor(click)',
       'invalid for MouseTracker',
@@ -1725,20 +1830,20 @@ void main() {
     ));
     final TestGesture gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
     await gesture.addPointer(location: const Offset(400.0, 300.0));
-    addTearDown(gesture.removePointer);
     await tester.pumpAndSettle();
     await gesture.moveBy(const Offset(10.0, 10.0));
     expect(tester.binding.hasScheduledFrame, isFalse);
   });
 
   // Regression test for https://github.com/flutter/flutter/issues/67044
-  testWidgets('Handle mouse events should ignore the detached MouseTrackerAnnotation', (WidgetTester tester) async {
+  testWidgets('Handle mouse events should ignore the detached MouseTrackerAnnotation',
+  (WidgetTester tester) async {
     await tester.pumpWidget(MaterialApp(
       home: Center(
         child: Draggable<int>(
           feedback: Container(width: 20, height: 20, color: Colors.blue),
           childWhenDragging: Container(width: 20, height: 20, color: Colors.yellow),
-          child: RaisedButton(child: const Text('Drag me'), onPressed: (){}),
+          child: ElevatedButton(child: const Text('Drag me'), onPressed: (){}),
         ),
       ),
     ));
@@ -1749,7 +1854,6 @@ void main() {
       textFieldPos,
       kind: PointerDeviceKind.mouse,
     );
-    addTearDown(gesture.removePointer);
     await tester.pump(const Duration(seconds: 2));
     await tester.pumpAndSettle();
 
@@ -1759,6 +1863,9 @@ void main() {
 
     // Continue drag mouse should not trigger any assert.
     await gesture.moveBy(const Offset(10.0, 10.0));
+
+     // Dispose gesture
+    await gesture.cancel();
     expect(tester.takeException(), isNull);
   });
 }
@@ -1804,6 +1911,8 @@ class _DelegatedPainter extends CustomPainter {
 }
 
 class _HoverClientWithClosures extends StatefulWidget {
+  const _HoverClientWithClosures();
+
   @override
   _HoverClientWithClosuresState createState() => _HoverClientWithClosuresState();
 }
@@ -1836,7 +1945,7 @@ class _HoverClientWithClosuresState extends State<_HoverClientWithClosures> {
 class _ColumnContainer extends StatelessWidget {
   const _ColumnContainer({
     required this.children,
-  }) : assert(children != null);
+  });
 
   final List<Widget> children;
 
@@ -1845,7 +1954,6 @@ class _ColumnContainer extends StatelessWidget {
     return Directionality(
       textDirection: TextDirection.ltr,
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: children,
       ),

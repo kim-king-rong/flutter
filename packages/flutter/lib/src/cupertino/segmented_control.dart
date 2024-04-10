@@ -59,6 +59,15 @@ const Duration _kFadeDuration = Duration(milliseconds: 165);
 /// arguments can be used to override the segmented control's colors from
 /// [CupertinoTheme] defaults.
 ///
+/// {@tool dartpad}
+/// This example shows a [CupertinoSegmentedControl] with an enum type.
+///
+/// The callback provided to [onValueChanged] should update the state of
+/// the parent [StatefulWidget] using the [State.setState] method, so that
+/// the parent gets rebuilt; for example:
+///
+/// ** See code in examples/api/lib/cupertino/segmented_control/cupertino_segmented_control.0.dart **
+/// {@end-tool}
 /// See also:
 ///
 ///  * [CupertinoSegmentedControl], a segmented control widget in the style used
@@ -67,9 +76,9 @@ const Duration _kFadeDuration = Duration(milliseconds: 165);
 class CupertinoSegmentedControl<T extends Object> extends StatefulWidget {
   /// Creates an iOS-style segmented control bar.
   ///
-  /// The [children] and [onValueChanged] arguments must not be null. The
-  /// [children] argument must be an ordered [Map] such as a [LinkedHashMap].
-  /// Further, the length of the [children] list must be greater than one.
+  /// The [children] argument must be an ordered [Map] such as a
+  /// [LinkedHashMap]. Further, the length of the [children] list must be
+  /// greater than one.
   ///
   /// Each widget value in the map of [children] must have an associated key
   /// that uniquely identifies this widget. This key is what will be returned
@@ -81,7 +90,7 @@ class CupertinoSegmentedControl<T extends Object> extends StatefulWidget {
   /// appear as selected. The [groupValue] must be either null or one of the keys
   /// in the [children] map.
   CupertinoSegmentedControl({
-    Key? key,
+    super.key,
     required this.children,
     required this.onValueChanged,
     this.groupValue,
@@ -90,14 +99,11 @@ class CupertinoSegmentedControl<T extends Object> extends StatefulWidget {
     this.borderColor,
     this.pressedColor,
     this.padding,
-  }) : assert(children != null),
-       assert(children.length >= 2),
-       assert(onValueChanged != null),
+  }) : assert(children.length >= 2),
        assert(
          groupValue == null || children.keys.any((T child) => child == groupValue),
          'The groupValue must be either null or one of the keys in the children map.',
-       ),
-       super(key: key);
+       );
 
   /// The identifying keys and corresponding widget values in the
   /// segmented control.
@@ -114,49 +120,9 @@ class CupertinoSegmentedControl<T extends Object> extends StatefulWidget {
 
   /// The callback that is called when a new option is tapped.
   ///
-  /// This attribute must not be null.
-  ///
   /// The segmented control passes the newly selected widget's associated key
   /// to the callback but does not actually change state until the parent
   /// widget rebuilds the segmented control with the new [groupValue].
-  ///
-  /// The callback provided to [onValueChanged] should update the state of
-  /// the parent [StatefulWidget] using the [State.setState] method, so that
-  /// the parent gets rebuilt; for example:
-  ///
-  /// {@tool snippet}
-  ///
-  /// ```dart
-  /// class SegmentedControlExample extends StatefulWidget {
-  ///   @override
-  ///   State createState() => SegmentedControlExampleState();
-  /// }
-  ///
-  /// class SegmentedControlExampleState extends State<SegmentedControlExample> {
-  ///   final Map<int, Widget> children = const {
-  ///     0: Text('Child 1'),
-  ///     1: Text('Child 2'),
-  ///   };
-  ///
-  ///   int currentValue;
-  ///
-  ///   @override
-  ///   Widget build(BuildContext context) {
-  ///     return Container(
-  ///       child: CupertinoSegmentedControl<int>(
-  ///         children: children,
-  ///         onValueChanged: (int newValue) {
-  ///           setState(() {
-  ///             currentValue = newValue;
-  ///           });
-  ///         },
-  ///         groupValue: currentValue,
-  ///       ),
-  ///     );
-  ///   }
-  /// }
-  /// ```
-  /// {@end-tool}
   final ValueChanged<T> onValueChanged;
 
   /// The color used to fill the backgrounds of unselected widgets and as the
@@ -188,7 +154,7 @@ class CupertinoSegmentedControl<T extends Object> extends StatefulWidget {
   final EdgeInsetsGeometry? padding;
 
   @override
-  _SegmentedControlState<T> createState() => _SegmentedControlState<T>();
+  State<CupertinoSegmentedControl<T>> createState() => _SegmentedControlState<T>();
 }
 
 class _SegmentedControlState<T extends Object> extends State<CupertinoSegmentedControl<T>>
@@ -333,8 +299,9 @@ class _SegmentedControlState<T extends Object> extends State<CupertinoSegmentedC
   }
 
   void _onTap(T currentKey) {
-    if (currentKey != _pressedKey)
+    if (currentKey != _pressedKey) {
       return;
+    }
     if (currentKey != widget.groupValue) {
       widget.onValueChanged(currentKey);
     }
@@ -342,27 +309,32 @@ class _SegmentedControlState<T extends Object> extends State<CupertinoSegmentedC
   }
 
   Color? getTextColor(int index, T currentKey) {
-    if (_selectionControllers[index].isAnimating)
+    if (_selectionControllers[index].isAnimating) {
       return _textColorTween.evaluate(_selectionControllers[index]);
-    if (widget.groupValue == currentKey)
+    }
+    if (widget.groupValue == currentKey) {
       return _unselectedColor;
+    }
     return _selectedColor;
   }
 
   Color? getBackgroundColor(int index, T currentKey) {
-    if (_selectionControllers[index].isAnimating)
+    if (_selectionControllers[index].isAnimating) {
       return _childTweens[index].evaluate(_selectionControllers[index]);
-    if (widget.groupValue == currentKey)
+    }
+    if (widget.groupValue == currentKey) {
       return _selectedColor;
-    if (_pressedKey == currentKey)
+    }
+    if (_pressedKey == currentKey) {
       return _pressedColor;
+    }
     return _unselectedColor;
   }
 
   @override
   Widget build(BuildContext context) {
-    final List<Widget> _gestureChildren = <Widget>[];
-    final List<Color> _backgroundColors = <Color>[];
+    final List<Widget> gestureChildren = <Widget>[];
+    final List<Color> backgroundColors = <Color>[];
     int index = 0;
     int? selectedIndex;
     int? pressedIndex;
@@ -381,40 +353,43 @@ class _SegmentedControlState<T extends Object> extends State<CupertinoSegmentedC
         child: widget.children[currentKey],
       );
 
-      child = GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTapDown: (TapDownDetails event) {
-          _onTapDown(currentKey);
-        },
-        onTapCancel: _onTapCancel,
-        onTap: () {
-          _onTap(currentKey);
-        },
-        child: IconTheme(
-          data: iconTheme,
-          child: DefaultTextStyle(
-            style: textStyle,
-            child: Semantics(
-              button: true,
-              inMutuallyExclusiveGroup: true,
-              selected: widget.groupValue == currentKey,
-              child: child,
+      child = MouseRegion(
+        cursor: kIsWeb ? SystemMouseCursors.click : MouseCursor.defer,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTapDown: (TapDownDetails event) {
+            _onTapDown(currentKey);
+          },
+          onTapCancel: _onTapCancel,
+          onTap: () {
+            _onTap(currentKey);
+          },
+          child: IconTheme(
+            data: iconTheme,
+            child: DefaultTextStyle(
+              style: textStyle,
+              child: Semantics(
+                button: true,
+                inMutuallyExclusiveGroup: true,
+                selected: widget.groupValue == currentKey,
+                child: child,
+              ),
             ),
           ),
         ),
       );
 
-      _backgroundColors.add(getBackgroundColor(index, currentKey)!);
-      _gestureChildren.add(child);
+      backgroundColors.add(getBackgroundColor(index, currentKey)!);
+      gestureChildren.add(child);
       index += 1;
     }
 
     final Widget box = _SegmentedControlRenderWidget<T>(
-      children: _gestureChildren,
       selectedIndex: selectedIndex,
       pressedIndex: pressedIndex,
-      backgroundColors: _backgroundColors,
+      backgroundColors: backgroundColors,
       borderColor: _borderColor!,
+      children: gestureChildren,
     );
 
     return Padding(
@@ -428,17 +403,14 @@ class _SegmentedControlState<T extends Object> extends State<CupertinoSegmentedC
 }
 
 class _SegmentedControlRenderWidget<T> extends MultiChildRenderObjectWidget {
-  _SegmentedControlRenderWidget({
-    Key? key,
-    List<Widget> children = const <Widget>[],
+  const _SegmentedControlRenderWidget({
+    super.key,
+    super.children,
     required this.selectedIndex,
     required this.pressedIndex,
     required this.backgroundColors,
     required this.borderColor,
-  }) : super(
-          key: key,
-          children: children,
-        );
+  });
 
   final int? selectedIndex;
   final int? pressedIndex;
@@ -482,8 +454,7 @@ class _RenderSegmentedControl<T> extends RenderBox
     required TextDirection textDirection,
     required List<Color> backgroundColors,
     required Color borderColor,
-  }) : assert(textDirection != null),
-       _textDirection = textDirection,
+  }) : _textDirection = textDirection,
        _selectedIndex = selectedIndex,
        _pressedIndex = pressedIndex,
        _backgroundColors = backgroundColors,
@@ -613,11 +584,17 @@ class _RenderSegmentedControl<T> extends RenderBox
       final Rect childRect = Rect.fromLTWH(start, 0.0, child.size.width, child.size.height);
       final RRect rChildRect;
       if (child == leftChild) {
-        rChildRect = RRect.fromRectAndCorners(childRect, topLeft: const Radius.circular(3.0),
-            bottomLeft: const Radius.circular(3.0));
+        rChildRect = RRect.fromRectAndCorners(
+          childRect,
+          topLeft: const Radius.circular(3.0),
+          bottomLeft: const Radius.circular(3.0),
+        );
       } else if (child == rightChild) {
-        rChildRect = RRect.fromRectAndCorners(childRect, topRight: const Radius.circular(3.0),
-            bottomRight: const Radius.circular(3.0));
+        rChildRect = RRect.fromRectAndCorners(
+          childRect,
+          topRight: const Radius.circular(3.0),
+          bottomRight: const Radius.circular(3.0),
+        );
       } else {
         rChildRect = RRect.fromRectAndCorners(childRect);
       }
@@ -650,6 +627,18 @@ class _RenderSegmentedControl<T> extends RenderBox
   }
 
   @override
+  double? computeDryBaseline(covariant BoxConstraints constraints, TextBaseline baseline) {
+    final Size childSize = _calculateChildSize(constraints);
+    final BoxConstraints childConstraints = BoxConstraints.tight(childSize);
+
+    BaselineOffset baselineOffset = BaselineOffset.noBaseline;
+    for (RenderBox? child = firstChild; child != null; child = childAfter(child)) {
+      baselineOffset = baselineOffset.minOf(BaselineOffset(child.getDryBaseline(childConstraints, baseline)));
+    }
+    return baselineOffset.offset;
+  }
+
+  @override
   Size computeDryLayout(BoxConstraints constraints) {
     final Size childSize = _calculateChildSize(constraints);
     return _computeOverallSizeFromChildSize(childSize);
@@ -678,14 +667,12 @@ class _RenderSegmentedControl<T> extends RenderBox
           lastChild,
           firstChild,
         );
-        break;
       case TextDirection.ltr:
         _layoutRects(
           childAfter,
           firstChild,
           lastChild,
         );
-        break;
     }
 
     size = _computeOverallSizeFromChildSize(childSize);
@@ -703,7 +690,6 @@ class _RenderSegmentedControl<T> extends RenderBox
   }
 
   void _paintChild(PaintingContext context, Offset offset, RenderBox child, int childIndex) {
-    assert(child != null);
 
     final _SegmentedControlContainerBoxParentData childParentData = child.parentData! as _SegmentedControlContainerBoxParentData;
 
@@ -726,7 +712,6 @@ class _RenderSegmentedControl<T> extends RenderBox
 
   @override
   bool hitTestChildren(BoxHitTestResult result, { required Offset position }) {
-    assert(position != null);
     RenderBox? child = lastChild;
     while (child != null) {
       final _SegmentedControlContainerBoxParentData childParentData = child.parentData! as _SegmentedControlContainerBoxParentData;

@@ -2,28 +2,35 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-
 import 'dart:async';
-import 'dart:typed_data';
 
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:leak_tracker_flutter_testing/leak_tracker_flutter_testing.dart';
 
 import 'restoration.dart';
 
 void main() {
+  testWidgets('$RestorationManager dispatches memory events', (WidgetTester tester) async {
+    await expectLater(
+      await memoryEvents(() => RestorationManager().dispose(), RestorationManager),
+      areCreateAndDispose,
+    );
+  });
+
   group('RestorationManager', () {
     testWidgets('root bucket retrieval', (WidgetTester tester) async {
       final List<MethodCall> callsToEngine = <MethodCall>[];
       final Completer<Map<dynamic, dynamic>> result = Completer<Map<dynamic, dynamic>>();
-      SystemChannels.restoration.setMockMethodCallHandler((MethodCall call) {
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.restoration, (MethodCall call) {
         callsToEngine.add(call);
         return result.future;
       });
 
       final RestorationManager manager = RestorationManager();
+      addTearDown(manager.dispose);
       final Future<RestorationBucket?> rootBucketFuture = manager.rootBucket;
       RestorationBucket? rootBucket;
       rootBucketFuture.then((RestorationBucket? bucket) {
@@ -50,6 +57,7 @@ void main() {
       expect(rootBucket!.read<int>('value1'), 10);
       expect(rootBucket!.read<String>('value2'), 'Hello');
       final RestorationBucket child = rootBucket!.claimChild('child1', debugOwner: null);
+      addTearDown(child.dispose);
       expect(child.read<int>('another value'), 22);
 
       // Accessing the root bucket again completes synchronously with same bucket.
@@ -64,10 +72,12 @@ void main() {
     testWidgets('root bucket received from engine before retrieval', (WidgetTester tester) async {
       SystemChannels.restoration.setMethodCallHandler(null);
       final List<MethodCall> callsToEngine = <MethodCall>[];
-      SystemChannels.restoration.setMockMethodCallHandler((MethodCall call) async {
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.restoration, (MethodCall call) async {
         callsToEngine.add(call);
+        return null;
       });
       final RestorationManager manager = RestorationManager();
+      addTearDown(manager.dispose);
 
       await _pushDataFromEngine(_createEncodedRestorationData1());
 
@@ -83,11 +93,12 @@ void main() {
       SystemChannels.restoration.setMethodCallHandler(null);
       final List<MethodCall> callsToEngine = <MethodCall>[];
       final Completer<Map<dynamic, dynamic>> result = Completer<Map<dynamic, dynamic>>();
-      SystemChannels.restoration.setMockMethodCallHandler((MethodCall call) {
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.restoration, (MethodCall call) {
         callsToEngine.add(call);
         return result.future;
       });
       final RestorationManager manager = RestorationManager();
+      addTearDown(manager.dispose);
 
       RestorationBucket? rootBucket;
       manager.rootBucket.then((RestorationBucket? bucket) => rootBucket = bucket);
@@ -110,10 +121,11 @@ void main() {
     });
 
     testWidgets('root bucket is properly replaced when new data is available', (WidgetTester tester) async {
-      SystemChannels.restoration.setMockMethodCallHandler((MethodCall call) async {
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.restoration, (MethodCall call) async {
         return _createEncodedRestorationData1();
       });
       final RestorationManager manager = RestorationManager();
+      addTearDown(manager.dispose);
       RestorationBucket? rootBucket;
       manager.rootBucket.then((RestorationBucket? bucket) {
         rootBucket = bucket;
@@ -146,13 +158,14 @@ void main() {
       expect(newRoot!.read<int>('foo'), 33);
       expect(newRoot!.read<int>('value1'), null);
       final RestorationBucket newChild = newRoot!.claimChild('childFoo', debugOwner: null);
+      addTearDown(newChild.dispose);
       expect(newChild.read<String>('bar'), 'Hello');
     });
 
     testWidgets('returns null as root bucket when restoration is disabled', (WidgetTester tester) async {
       final List<MethodCall> callsToEngine = <MethodCall>[];
       final Completer<Map<dynamic, dynamic>> result = Completer<Map<dynamic, dynamic>>();
-      SystemChannels.restoration.setMockMethodCallHandler((MethodCall call)  {
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.restoration, (MethodCall call)  {
         callsToEngine.add(call);
         return result.future;
       });
@@ -160,6 +173,7 @@ void main() {
       final RestorationManager manager = RestorationManager()..addListener(() {
         listenerCount++;
       });
+      addTearDown(manager.dispose);
       RestorationBucket? rootBucket;
       bool rootBucketResolved = false;
       manager.rootBucket.then((RestorationBucket? bucket) {
@@ -195,12 +209,13 @@ void main() {
     testWidgets('flushData', (WidgetTester tester) async {
       final List<MethodCall> callsToEngine = <MethodCall>[];
       final Completer<Map<dynamic, dynamic>> result = Completer<Map<dynamic, dynamic>>();
-      SystemChannels.restoration.setMockMethodCallHandler((MethodCall call) {
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.restoration, (MethodCall call) {
         callsToEngine.add(call);
         return result.future;
       });
 
       final RestorationManager manager = RestorationManager();
+      addTearDown(manager.dispose);
       final Future<RestorationBucket?> rootBucketFuture = manager.rootBucket;
       RestorationBucket? rootBucket;
       rootBucketFuture.then((RestorationBucket? bucket) {
@@ -212,7 +227,7 @@ void main() {
       callsToEngine.clear();
 
       // Schedule a frame.
-      SchedulerBinding.instance!.ensureVisualUpdate();
+      SchedulerBinding.instance.ensureVisualUpdate();
       rootBucket!.write('foo', 1);
       // flushData is no-op because frame is scheduled.
       manager.flushData();
@@ -230,11 +245,12 @@ void main() {
 
     testWidgets('isReplacing', (WidgetTester tester) async {
       final Completer<Map<dynamic, dynamic>> result = Completer<Map<dynamic, dynamic>>();
-      SystemChannels.restoration.setMockMethodCallHandler((MethodCall call) {
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.restoration, (MethodCall call) {
         return result.future;
       });
 
       final TestRestorationManager manager = TestRestorationManager();
+      addTearDown(manager.dispose);
       expect(manager.isReplacing, isFalse);
 
       RestorationBucket? rootBucket;
@@ -257,7 +273,7 @@ void main() {
         rootBucket2 = bucket;
       });
       expect(rootBucket2, isNotNull);
-      expect(rootBucket2!, isNot(same(rootBucket)));
+      expect(rootBucket2, isNot(same(rootBucket)));
       expect(manager.isReplacing, isTrue);
       expect(rootBucket2!.isReplacing, isTrue);
       await tester.idle();
@@ -305,7 +321,7 @@ void main() {
 }
 
 Future<void> _pushDataFromEngine(Map<dynamic, dynamic> data) async {
-  await ServicesBinding.instance!.defaultBinaryMessenger.handlePlatformMessage(
+  await TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.handlePlatformMessage(
     'flutter/restoration',
     const StandardMethodCodec().encodeMethodCall(MethodCall('push', data)),
     (_) { },
@@ -322,7 +338,7 @@ Map<dynamic, dynamic> _createEncodedRestorationData1() {
       'child1' : <String, dynamic>{
         valuesMapKey : <String, dynamic>{
           'another value': 22,
-        }
+        },
       },
     },
   };
@@ -338,7 +354,7 @@ Map<dynamic, dynamic> _createEncodedRestorationData2() {
       'childFoo' : <String, dynamic>{
         valuesMapKey : <String, dynamic>{
           'bar': 'Hello',
-        }
+        },
       },
     },
   };

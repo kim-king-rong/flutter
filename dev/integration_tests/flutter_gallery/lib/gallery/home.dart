@@ -5,9 +5,9 @@
 import 'dart:developer';
 import 'dart:math' as math;
 
+import 'package:flutter/gestures.dart' show DragStartBehavior;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter/gestures.dart' show DragStartBehavior;
 
 import 'backdrop.dart';
 import 'demos.dart';
@@ -18,7 +18,7 @@ const double _kDemoItemHeight = 64.0;
 const Duration _kFrontLayerSwitchDuration = Duration(milliseconds: 300);
 
 class _FlutterLogo extends StatelessWidget {
-  const _FlutterLogo({ Key? key }) : super(key: key);
+  const _FlutterLogo();
 
   @override
   Widget build(BuildContext context) {
@@ -41,10 +41,9 @@ class _FlutterLogo extends StatelessWidget {
 
 class _CategoryItem extends StatelessWidget {
   const _CategoryItem({
-    Key? key,
     this.category,
     this.onTap,
-  }) : super (key: key);
+  });
 
   final GalleryDemoCategory? category;
   final VoidCallback? onTap;
@@ -58,14 +57,12 @@ class _CategoryItem extends StatelessWidget {
     // repainted when the button's ink splash animates.
     return RepaintBoundary(
       child: RawMaterialButton(
-        padding: EdgeInsets.zero,
         hoverColor: theme.primaryColor.withOpacity(0.05),
         splashColor: theme.primaryColor.withOpacity(0.12),
         highlightColor: Colors.transparent,
         onPressed: onTap,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.end,
-          crossAxisAlignment: CrossAxisAlignment.center,
           children: <Widget>[
             Padding(
               padding: const EdgeInsets.all(6.0),
@@ -82,7 +79,7 @@ class _CategoryItem extends StatelessWidget {
               child: Text(
                 category!.name,
                 textAlign: TextAlign.center,
-                style: theme.textTheme.subtitle1!.copyWith(
+                style: theme.textTheme.titleMedium!.copyWith(
                   fontFamily: 'GoogleSans',
                   color: isDark ? Colors.white : _kFlutterBlue,
                 ),
@@ -97,10 +94,9 @@ class _CategoryItem extends StatelessWidget {
 
 class _CategoriesPage extends StatelessWidget {
   const _CategoriesPage({
-    Key? key,
     this.categories,
     this.onCategoryTap,
-  }) : super(key: key);
+  });
 
   final Iterable<GalleryDemoCategory>? categories;
   final ValueChanged<GalleryDemoCategory>? onCategoryTap;
@@ -164,7 +160,7 @@ class _CategoriesPage extends StatelessWidget {
 }
 
 class _DemoItem extends StatelessWidget {
-  const _DemoItem({ Key? key, this.demo }) : super(key: key);
+  const _DemoItem({ this.demo });
 
   final GalleryDemo? demo;
 
@@ -182,16 +178,17 @@ class _DemoItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final bool isDark = theme.brightness == Brightness.dark;
-    final double textScaleFactor = MediaQuery.textScaleFactorOf(context);
+    // The fontSize to use for computing the heuristic UI scaling factor.
+    const double defaultFontSize = 14.0;
+    final double containerScalingFactor = MediaQuery.textScalerOf(context).scale(defaultFontSize) / defaultFontSize;
     return RawMaterialButton(
-      padding: EdgeInsets.zero,
       splashColor: theme.primaryColor.withOpacity(0.12),
       highlightColor: Colors.transparent,
       onPressed: () {
         _launchDemo(context);
       },
       child: Container(
-        constraints: BoxConstraints(minHeight: _kDemoItemHeight * textScaleFactor),
+        constraints: BoxConstraints(minHeight: _kDemoItemHeight * containerScalingFactor),
         child: Row(
           children: <Widget>[
             Container(
@@ -211,14 +208,14 @@ class _DemoItem extends StatelessWidget {
                 children: <Widget>[
                   Text(
                     demo!.title,
-                    style: theme.textTheme.subtitle1!.copyWith(
+                    style: theme.textTheme.titleMedium!.copyWith(
                       color: isDark ? Colors.white : const Color(0xFF202124),
                     ),
                   ),
                   if (demo!.subtitle != null)
                     Text(
                       demo!.subtitle!,
-                      style: theme.textTheme.bodyText2!.copyWith(
+                      style: theme.textTheme.bodyMedium!.copyWith(
                         color: isDark ? Colors.white : const Color(0xFF60646B)
                       ),
                     ),
@@ -265,10 +262,10 @@ class _DemosPage extends StatelessWidget {
 
 class GalleryHome extends StatefulWidget {
   const GalleryHome({
-    Key? key,
+    super.key,
     this.testMode = false,
     this.optionsPage,
-  }) : super(key: key);
+  });
 
   final Widget? optionsPage;
   final bool testMode;
@@ -278,7 +275,7 @@ class GalleryHome extends StatefulWidget {
   static bool showPreviewBanner = true;
 
   @override
-  _GalleryHomeState createState() => _GalleryHomeState();
+  State<GalleryHome> createState() => _GalleryHomeState();
 }
 
 class _GalleryHomeState extends State<GalleryHome> with SingleTickerProviderStateMixin {
@@ -288,11 +285,11 @@ class _GalleryHomeState extends State<GalleryHome> with SingleTickerProviderStat
 
   static Widget _topHomeLayout(Widget? currentChild, List<Widget> previousChildren) {
     return Stack(
+      alignment: Alignment.topCenter,
       children: <Widget>[
         ...previousChildren,
         if (currentChild != null) currentChild,
       ],
-      alignment: Alignment.topCenter,
     );
   }
 
@@ -329,14 +326,14 @@ class _GalleryHomeState extends State<GalleryHome> with SingleTickerProviderStat
       backgroundColor: isDark ? _kFlutterBlue : theme.primaryColor,
       body: SafeArea(
         bottom: false,
-        child: WillPopScope(
-          onWillPop: () {
-            // Pop the category page if Android back button is pressed.
-            if (_category != null) {
-              setState(() => _category = null);
-              return Future<bool>.value(false);
+        child: PopScope(
+          canPop: _category == null,
+          onPopInvoked: (bool didPop) {
+            if (didPop) {
+              return;
             }
-            return Future<bool>.value(true);
+            // Pop the category page if Android back button is pressed.
+            setState(() => _category = null);
           },
           child: Backdrop(
             backTitle: const Text('Options'),
@@ -400,8 +397,8 @@ class _GalleryHomeState extends State<GalleryHome> with SingleTickerProviderStat
       );
     }
     home = AnnotatedRegion<SystemUiOverlayStyle>(
-      child: home,
       value: SystemUiOverlayStyle.light,
+      child: home,
     );
 
     return home;

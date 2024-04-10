@@ -3,21 +3,24 @@
 // found in the LICENSE file.
 
 import 'package:file/memory.dart';
-import 'package:flutter_tools/src/base/context.dart';
+import 'package:flutter_tools/src/base/bot_detector.dart';
 import 'package:flutter_tools/src/base/file_system.dart';
 import 'package:flutter_tools/src/base/io.dart';
 import 'package:flutter_tools/src/base/platform.dart';
 import 'package:flutter_tools/src/base/terminal.dart';
 import 'package:flutter_tools/src/cache.dart';
 import 'package:flutter_tools/src/globals.dart' as globals;
+import 'package:flutter_tools/src/reporting/reporting.dart';
+import 'package:flutter_tools/src/resident_runner.dart';
 import 'package:flutter_tools/src/runner/flutter_command.dart';
 import 'package:flutter_tools/src/runner/flutter_command_runner.dart';
 import 'package:flutter_tools/src/version.dart';
-import 'package:mockito/mockito.dart';
-import 'package:process/process.dart';
+import 'package:unified_analytics/unified_analytics.dart';
 
 import '../../src/common.dart';
 import '../../src/context.dart';
+import '../../src/fakes.dart';
+import '../../src/test_flutter_command_runner.dart';
 import 'utils.dart';
 
 const String _kFlutterRoot = '/flutter/flutter';
@@ -25,20 +28,25 @@ const String _kProjectRoot = '/project';
 
 void main() {
   group('FlutterCommandRunner', () {
-    MemoryFileSystem fs;
-    Platform platform;
-    FlutterCommandRunner runner;
-    ProcessManager processManager;
+    late MemoryFileSystem fileSystem;
+    late Platform platform;
+    late TestUsage testUsage;
+    late FakeAnalytics fakeAnalytics;
 
     setUpAll(() {
       Cache.disableLocking();
     });
 
     setUp(() {
-      fs = MemoryFileSystem.test();
-      fs.directory(_kFlutterRoot).createSync(recursive: true);
-      fs.directory(_kProjectRoot).createSync(recursive: true);
-      fs.currentDirectory = _kProjectRoot;
+      fileSystem = MemoryFileSystem.test();
+      fileSystem.directory(_kFlutterRoot).createSync(recursive: true);
+      fileSystem.directory(_kProjectRoot).createSync(recursive: true);
+      fileSystem.currentDirectory = _kProjectRoot;
+      testUsage = TestUsage();
+      fakeAnalytics = getInitializedFakeAnalyticsInstance(
+        fs: fileSystem,
+        fakeFlutterVersion: FakeFlutterVersion(),
+      );
 
       platform = FakePlatform(
         environment: <String, String>{
@@ -46,198 +54,261 @@ void main() {
         },
         version: '1 2 3 4 5',
       );
-
-      runner = createTestCommandRunner(DummyFlutterCommand()) as FlutterCommandRunner;
-      processManager = MockProcessManager();
     });
 
     group('run', () {
       testUsingContext('checks that Flutter installation is up-to-date', () async {
-        final MockFlutterVersion version = globals.flutterVersion as MockFlutterVersion;
-        bool versionChecked = false;
-        when(version.checkFlutterVersionFreshness()).thenAnswer((_) async {
-          versionChecked = true;
-        });
+        final FlutterCommandRunner runner = createTestCommandRunner(DummyFlutterCommand()) as FlutterCommandRunner;
+        final FakeFlutterVersion version = globals.flutterVersion as FakeFlutterVersion;
 
         await runner.run(<String>['dummy']);
 
-        expect(versionChecked, isTrue);
+        expect(version.didCheckFlutterVersionFreshness, true);
       }, overrides: <Type, Generator>{
-        FileSystem: () => fs,
+        FileSystem: () => fileSystem,
         ProcessManager: () => FakeProcessManager.any(),
         Platform: () => platform,
-      }, initializeFlutterRoot: false);
+        FlutterVersion: () => FakeFlutterVersion(),
+        BotDetector: () => const FakeBotDetector(false),
+        OutputPreferences: () => OutputPreferences.test(),
+      });
 
       testUsingContext('does not check that Flutter installation is up-to-date with --machine flag', () async {
-        final MockFlutterVersion version = globals.flutterVersion as MockFlutterVersion;
-        bool versionChecked = false;
-        when(version.checkFlutterVersionFreshness()).thenAnswer((_) async {
-          versionChecked = true;
-        });
+        final FlutterCommandRunner runner = createTestCommandRunner(DummyFlutterCommand()) as FlutterCommandRunner;
+        final FakeFlutterVersion version = globals.flutterVersion as FakeFlutterVersion;
 
         await runner.run(<String>['dummy', '--machine', '--version']);
 
-        expect(versionChecked, isFalse);
+        expect(version.didCheckFlutterVersionFreshness, false);
       }, overrides: <Type, Generator>{
-        FileSystem: () => fs,
+        FileSystem: () => fileSystem,
         ProcessManager: () => FakeProcessManager.any(),
         Platform: () => platform,
+        FlutterVersion: () => FakeFlutterVersion(),
+        OutputPreferences: () => OutputPreferences.test(),
+      });
+
+      testUsingContext('does not check that Flutter installation is up-to-date with CI=true in environment', () async {
+        final FlutterCommandRunner runner = createTestCommandRunner(DummyFlutterCommand()) as FlutterCommandRunner;
+        final FakeFlutterVersion version = globals.flutterVersion as FakeFlutterVersion;
+
+        await runner.run(<String>['dummy', '--version']);
+
+        expect(version.didCheckFlutterVersionFreshness, false);
+      }, overrides: <Type, Generator>{
+        FileSystem: () => fileSystem,
+        ProcessManager: () => FakeProcessManager.any(),
+        Platform: () => platform,
+        BotDetector: () => const FakeBotDetector(true),
       }, initializeFlutterRoot: false);
+
+      testUsingContext('checks that Flutter installation is up-to-date with CI=true and --machine when explicit --version-check', () async {
+        final FlutterCommandRunner runner = createTestCommandRunner(DummyFlutterCommand()) as FlutterCommandRunner;
+        final FakeFlutterVersion version = globals.flutterVersion as FakeFlutterVersion;
+
+        await runner.run(<String>['dummy', '--version', '--machine', '--version-check']);
+
+         expect(version.didCheckFlutterVersionFreshness, true);
+      }, overrides: <Type, Generator>{
+        FileSystem: () => fileSystem,
+        ProcessManager: () => FakeProcessManager.any(),
+        Platform: () => platform,
+        BotDetector: () => const FakeBotDetector(true),
+      }, initializeFlutterRoot: false);
+
+      testUsingContext('checks that Flutter installation is up-to-date if shell completion to terminal', () async {
+        final FlutterCommand command = DummyFlutterCommand(name: 'bash-completion');
+        final FlutterCommandRunner runner = createTestCommandRunner(command) as FlutterCommandRunner;
+        final FakeFlutterVersion version = globals.flutterVersion as FakeFlutterVersion;
+
+        await runner.run(<String>['bash-completion']);
+
+        expect(version.didCheckFlutterVersionFreshness, true);
+      }, overrides: <Type, Generator>{
+        FileSystem: () => fileSystem,
+        ProcessManager: () => FakeProcessManager.any(),
+        Platform: () => platform,
+        FlutterVersion: () => FakeFlutterVersion(),
+        BotDetector: () => const FakeBotDetector(false),
+        Stdio: () => FakeStdio(hasFakeTerminal: true),
+      });
+
+      testUsingContext('does not check that Flutter installation is up-to-date if redirecting shell completion', () async {
+        final FlutterCommand command = DummyFlutterCommand(name: 'bash-completion');
+        final FlutterCommandRunner runner = createTestCommandRunner(command) as FlutterCommandRunner;
+        final FakeFlutterVersion version = globals.flutterVersion as FakeFlutterVersion;
+
+        await runner.run(<String>['bash-completion']);
+
+        expect(version.didCheckFlutterVersionFreshness, false);
+      }, overrides: <Type, Generator>{
+        FileSystem: () => fileSystem,
+        ProcessManager: () => FakeProcessManager.any(),
+        Platform: () => platform,
+        FlutterVersion: () => FakeFlutterVersion(),
+        BotDetector: () => const FakeBotDetector(false),
+        Stdio: () => FakeStdio(hasFakeTerminal: false),
+      });
 
       testUsingContext('Fetches tags when --version is used', () async {
-        final MockFlutterVersion version = globals.flutterVersion as MockFlutterVersion;
+        final FlutterCommandRunner runner = createTestCommandRunner(DummyFlutterCommand()) as FlutterCommandRunner;
+        final FakeFlutterVersion version = globals.flutterVersion as FakeFlutterVersion;
 
         await runner.run(<String>['--version']);
-
-        verify(version.fetchTagsAndUpdate()).called(1);
+        expect(version.didFetchTagsAndUpdate, true);
+        expect(testUsage.commands, contains(
+          const TestUsageCommand('version'),
+        ));
+        expect(fakeAnalytics.sentEvents, contains(
+          Event.flutterCommandResult(
+            commandPath: 'version',
+            result: 'success',
+            commandHasTerminal: false,
+          ),
+        ));
       }, overrides: <Type, Generator>{
-        FileSystem: () => fs,
+        FileSystem: () => fileSystem,
         ProcessManager: () => FakeProcessManager.any(),
         Platform: () => platform,
-      }, initializeFlutterRoot: false);
+        FlutterVersion: () => FakeFlutterVersion(),
+        OutputPreferences: () => OutputPreferences.test(),
+        Usage: () => testUsage,
+        Analytics: () => fakeAnalytics,
+      });
 
-    testUsingContext('Doesnt crash on invalid .packages file', () async {
-      fs.file('pubspec.yaml').createSync();
-      fs.file('.packages')
-        ..createSync()
-        ..writeAsStringSync('Not a valid package');
+      group('${FlutterGlobalOptions.kPrintDtd} flag', () {
+        testUsingContext('sets DevtoolsLauncher.printDtdUri to false when not present', () async {
+          final FlutterCommandRunner runner = createTestCommandRunner(DummyFlutterCommand()) as FlutterCommandRunner;
+          await runner.run(<String>[]);
+          expect(DevtoolsLauncher.instance!.printDtdUri, false);
+        }, overrides: <Type, Generator>{
+          DevtoolsLauncher: () => FakeDevtoolsLauncher()..dtdUri = Uri(),
+        });
 
-      await runner.run(<String>['dummy']);
+        testUsingContext('sets DevtoolsLauncher.printDtdUri to true when present', () async {
+          final FlutterCommandRunner runner = createTestCommandRunner(DummyFlutterCommand()) as FlutterCommandRunner;
+          await runner.run(<String>['--${FlutterGlobalOptions.kPrintDtd}']);
+          expect(DevtoolsLauncher.instance!.printDtdUri, true);
+        }, overrides: <Type, Generator>{
+          DevtoolsLauncher: () => FakeDevtoolsLauncher()..dtdUri = Uri(),
+        });
+      });
 
-    }, overrides: <Type, Generator>{
-      FileSystem: () => fs,
-      ProcessManager: () => FakeProcessManager.any(),
-      Platform: () => platform,
-    }, initializeFlutterRoot: false);
+      testUsingContext("Doesn't crash on invalid .packages file", () async {
+        final FlutterCommandRunner runner = createTestCommandRunner(DummyFlutterCommand()) as FlutterCommandRunner;
+        fileSystem.file('pubspec.yaml').createSync();
+        fileSystem.file('.packages')
+          ..createSync()
+          ..writeAsStringSync('Not a valid package');
 
-    group('version', () {
-      testUsingContext('checks that Flutter toJson output reports the flutter framework version', () async {
-        final ProcessResult result = ProcessResult(0, 0, 'random', '0');
+        await runner.run(<String>['dummy']);
 
-        when(processManager.runSync(FlutterVersion.gitLog('-n 1 --pretty=format:%H'.split(' ')),
-          workingDirectory: Cache.flutterRoot)).thenReturn(result);
-        when(processManager.runSync('git rev-parse --abbrev-ref --symbolic @{u}'.split(' '),
-          workingDirectory: Cache.flutterRoot)).thenReturn(result);
-        when(processManager.runSync('git rev-parse --abbrev-ref HEAD'.split(' '),
-          workingDirectory: Cache.flutterRoot)).thenReturn(result);
-        when(processManager.runSync('git ls-remote --get-url master'.split(' '),
-          workingDirectory: Cache.flutterRoot)).thenReturn(result);
-        when(processManager.runSync(FlutterVersion.gitLog('-n 1 --pretty=format:%ar'.split(' ')),
-          workingDirectory: Cache.flutterRoot)).thenReturn(result);
-        when(processManager.runSync('git fetch https://github.com/flutter/flutter.git --tags'.split(' '),
-          workingDirectory: Cache.flutterRoot)).thenReturn(result);
-        when(processManager.runSync('git tag --points-at random'.split(' '),
-          workingDirectory: Cache.flutterRoot)).thenReturn(result);
-        when(processManager.runSync('git describe --match *.*.* --long --tags random'.split(' '),
-          workingDirectory: Cache.flutterRoot)).thenReturn(result);
-        when(processManager.runSync(FlutterVersion.gitLog('-n 1 --pretty=format:%ad --date=iso'.split(' ')),
-          workingDirectory: Cache.flutterRoot)).thenReturn(result);
-
-        final FakeFlutterVersion version = FakeFlutterVersion();
-
-        // Because the hash depends on the time, we just use the 0.0.0-unknown here.
-        expect(version.toJson()['frameworkVersion'], '0.10.3');
       }, overrides: <Type, Generator>{
-        FileSystem: () => fs,
-        ProcessManager: () => processManager,
+        FileSystem: () => fileSystem,
+        ProcessManager: () => FakeProcessManager.any(),
         Platform: () => platform,
-      }, initializeFlutterRoot: false);
-    });
-
-    group('getRepoPackages', () {
-      String oldFlutterRoot;
-
-      setUp(() {
-        oldFlutterRoot = Cache.flutterRoot;
-        Cache.flutterRoot = _kFlutterRoot;
-        fs.directory(fs.path.join(_kFlutterRoot, 'examples'))
-            .createSync(recursive: true);
-        fs.directory(fs.path.join(_kFlutterRoot, 'packages'))
-            .createSync(recursive: true);
-        fs.directory(fs.path.join(_kFlutterRoot, 'dev', 'tools', 'aatool'))
-            .createSync(recursive: true);
-
-        fs.file(fs.path.join(_kFlutterRoot, 'dev', 'tools', 'pubspec.yaml'))
-            .createSync();
-        fs.file(fs.path.join(_kFlutterRoot, 'dev', 'tools', 'aatool', 'pubspec.yaml'))
-            .createSync();
+        OutputPreferences: () => OutputPreferences.test(),
       });
 
-      tearDown(() {
-        Cache.flutterRoot = oldFlutterRoot;
-      });
+      group('getRepoPackages', () {
+        late String? oldFlutterRoot;
 
-      testUsingContext('', () {
-        final List<String> packagePaths = runner.getRepoPackages()
+        setUp(() {
+          oldFlutterRoot = Cache.flutterRoot;
+          Cache.flutterRoot = _kFlutterRoot;
+          fileSystem.directory(fileSystem.path.join(_kFlutterRoot, 'examples'))
+              .createSync(recursive: true);
+          fileSystem.directory(fileSystem.path.join(_kFlutterRoot, 'packages'))
+              .createSync(recursive: true);
+          fileSystem.directory(fileSystem.path.join(_kFlutterRoot, 'dev', 'tools', 'aatool'))
+              .createSync(recursive: true);
+
+          fileSystem.file(fileSystem.path.join(_kFlutterRoot, 'dev', 'tools', 'pubspec.yaml'))
+              .createSync();
+          fileSystem.file(fileSystem.path.join(_kFlutterRoot, 'dev', 'tools', 'aatool', 'pubspec.yaml'))
+              .createSync();
+        });
+
+        tearDown(() {
+          Cache.flutterRoot = oldFlutterRoot;
+        });
+
+        testUsingContext('', () {
+          final FlutterCommandRunner runner = createTestCommandRunner(DummyFlutterCommand()) as FlutterCommandRunner;
+          final List<String> packagePaths = runner.getRepoPackages()
             .map((Directory d) => d.path).toList();
-        expect(packagePaths, <String>[
-          fs.directory(fs.path.join(_kFlutterRoot, 'dev', 'tools', 'aatool')).path,
-          fs.directory(fs.path.join(_kFlutterRoot, 'dev', 'tools')).path,
-        ]);
-      }, overrides: <Type, Generator>{
-        FileSystem: () => fs,
-        ProcessManager: () => FakeProcessManager.any(),
-        Platform: () => platform,
-      }, initializeFlutterRoot: false);
-    });
+          expect(packagePaths, <String>[
+            fileSystem.directory(fileSystem.path.join(_kFlutterRoot, 'dev', 'tools', 'aatool')).path,
+            fileSystem.directory(fileSystem.path.join(_kFlutterRoot, 'dev', 'tools')).path,
+          ]);
+        }, overrides: <Type, Generator>{
+          FileSystem: () => fileSystem,
+          ProcessManager: () => FakeProcessManager.any(),
+          Platform: () => platform,
+          FlutterVersion: () => FakeFlutterVersion(),
+          OutputPreferences: () => OutputPreferences.test(),
+        });
+      });
 
-    group('wrapping', () {
-      testUsingContext('checks that output wrapping is turned on when writing to a terminal', () async {
-        final FakeFlutterCommand fakeCommand = FakeFlutterCommand();
-        runner.addCommand(fakeCommand);
-        await runner.run(<String>['fake']);
-        expect(fakeCommand.preferences.wrapText, isTrue);
-      }, overrides: <Type, Generator>{
-        FileSystem: () => fs,
-        ProcessManager: () => FakeProcessManager.any(),
-        Stdio: () => FakeStdio(hasFakeTerminal: true),
-      }, initializeFlutterRoot: false);
+      group('wrapping', () {
+        testUsingContext('checks that output wrapping is turned on when writing to a terminal', () async {
+          final FlutterCommandRunner runner = createTestCommandRunner(DummyFlutterCommand()) as FlutterCommandRunner;
+          final FakeFlutterCommand fakeCommand = FakeFlutterCommand();
+          runner.addCommand(fakeCommand);
+          await runner.run(<String>['fake']);
+          expect(fakeCommand.preferences.wrapText, isTrue);
+        }, overrides: <Type, Generator>{
+          FileSystem: () => fileSystem,
+          ProcessManager: () => FakeProcessManager.any(),
+          Stdio: () => FakeStdio(hasFakeTerminal: true),
+          OutputPreferences: () => OutputPreferences.test(),
+        }, initializeFlutterRoot: false);
 
-      testUsingContext('checks that output wrapping is turned off when not writing to a terminal', () async {
-        final FakeFlutterCommand fakeCommand = FakeFlutterCommand();
-        runner.addCommand(fakeCommand);
-        await runner.run(<String>['fake']);
-        expect(fakeCommand.preferences.wrapText, isFalse);
-      }, overrides: <Type, Generator>{
-        FileSystem: () => fs,
-        ProcessManager: () => FakeProcessManager.any(),
-        Stdio: () => FakeStdio(hasFakeTerminal: false),
-      }, initializeFlutterRoot: false);
+        testUsingContext('checks that output wrapping is turned off when not writing to a terminal', () async {
+          final FlutterCommandRunner runner = createTestCommandRunner(DummyFlutterCommand()) as FlutterCommandRunner;
+          final FakeFlutterCommand fakeCommand = FakeFlutterCommand();
+          runner.addCommand(fakeCommand);
+          await runner.run(<String>['fake']);
+          expect(fakeCommand.preferences.wrapText, isFalse);
+        }, overrides: <Type, Generator>{
+          FileSystem: () => fileSystem,
+          ProcessManager: () => FakeProcessManager.any(),
+          Stdio: () => FakeStdio(hasFakeTerminal: false),
+          OutputPreferences: () => OutputPreferences.test(),
+        }, initializeFlutterRoot: false);
 
-      testUsingContext('checks that output wrapping is turned off when set on the command line and writing to a terminal', () async {
-        final FakeFlutterCommand fakeCommand = FakeFlutterCommand();
-        runner.addCommand(fakeCommand);
-        await runner.run(<String>['--no-wrap', 'fake']);
-        expect(fakeCommand.preferences.wrapText, isFalse);
-      }, overrides: <Type, Generator>{
-        FileSystem: () => fs,
-        ProcessManager: () => FakeProcessManager.any(),
-        Stdio: () => FakeStdio(hasFakeTerminal: true),
-      }, initializeFlutterRoot: false);
+        testUsingContext('checks that output wrapping is turned off when set on the command line and writing to a terminal', () async {
+          final FlutterCommandRunner runner = createTestCommandRunner(DummyFlutterCommand()) as FlutterCommandRunner;
+          final FakeFlutterCommand fakeCommand = FakeFlutterCommand();
+          runner.addCommand(fakeCommand);
+          await runner.run(<String>['--no-wrap', 'fake']);
+          expect(fakeCommand.preferences.wrapText, isFalse);
+        }, overrides: <Type, Generator>{
+          FileSystem: () => fileSystem,
+          ProcessManager: () => FakeProcessManager.any(),
+          Stdio: () => FakeStdio(hasFakeTerminal: true),
+          OutputPreferences: () => OutputPreferences.test(),
+        }, initializeFlutterRoot: false);
 
-      testUsingContext('checks that output wrapping is turned on when set on the command line, but not writing to a terminal', () async {
-        final FakeFlutterCommand fakeCommand = FakeFlutterCommand();
-        runner.addCommand(fakeCommand);
-        await runner.run(<String>['--wrap', 'fake']);
-        expect(fakeCommand.preferences.wrapText, isTrue);
-      }, overrides: <Type, Generator>{
-        FileSystem: () => fs,
-        ProcessManager: () => FakeProcessManager.any(),
-        Stdio: () => FakeStdio(hasFakeTerminal: false),
-      }, initializeFlutterRoot: false);
+        testUsingContext('checks that output wrapping is turned on when set on the command line, but not writing to a terminal', () async {
+          final FlutterCommandRunner runner = createTestCommandRunner(DummyFlutterCommand()) as FlutterCommandRunner;
+          final FakeFlutterCommand fakeCommand = FakeFlutterCommand();
+          runner.addCommand(fakeCommand);
+          await runner.run(<String>['--wrap', 'fake']);
+          expect(fakeCommand.preferences.wrapText, isTrue);
+        }, overrides: <Type, Generator>{
+          FileSystem: () => fileSystem,
+          ProcessManager: () => FakeProcessManager.any(),
+          Stdio: () => FakeStdio(hasFakeTerminal: false),
+          OutputPreferences: () => OutputPreferences.test(),
+        }, initializeFlutterRoot: false);
+      });
     });
   });
-  });
-}
-class MockProcessManager extends Mock implements ProcessManager {}
-
-class FakeFlutterVersion extends FlutterVersion {
-  @override
-  String get frameworkVersion => '0.10.3';
 }
 
 class FakeFlutterCommand extends FlutterCommand {
-  OutputPreferences preferences;
+  late OutputPreferences preferences;
 
   @override
   Future<FlutterCommandResult> runCommand() {
@@ -246,14 +317,14 @@ class FakeFlutterCommand extends FlutterCommand {
   }
 
   @override
-  String get description => null;
+  String get description => '';
 
   @override
   String get name => 'fake';
 }
 
 class FakeStdio extends Stdio {
-  FakeStdio({this.hasFakeTerminal});
+  FakeStdio({required this.hasFakeTerminal});
 
   final bool hasFakeTerminal;
 
@@ -261,10 +332,10 @@ class FakeStdio extends Stdio {
   bool get hasTerminal => hasFakeTerminal;
 
   @override
-  int get terminalColumns => hasFakeTerminal ? 80 : null;
+  int? get terminalColumns => hasFakeTerminal ? 80 : null;
 
   @override
-  int get terminalLines => hasFakeTerminal ? 24 : null;
+  int? get terminalLines => hasFakeTerminal ? 24 : null;
   @override
   bool get supportsAnsiEscapes => hasFakeTerminal;
 }

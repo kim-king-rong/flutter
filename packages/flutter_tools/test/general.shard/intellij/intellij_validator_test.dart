@@ -3,27 +3,28 @@
 // found in the LICENSE file.
 
 import 'package:archive/archive.dart';
-import 'package:file/file.dart';
 import 'package:file/memory.dart';
 import 'package:flutter_tools/src/base/file_system.dart';
+import 'package:flutter_tools/src/base/logger.dart';
 import 'package:flutter_tools/src/base/platform.dart';
 import 'package:flutter_tools/src/base/user_messages.dart';
 import 'package:flutter_tools/src/convert.dart';
-import 'package:flutter_tools/src/doctor.dart';
+import 'package:flutter_tools/src/doctor_validator.dart';
 import 'package:flutter_tools/src/intellij/intellij_validator.dart';
 import 'package:flutter_tools/src/ios/plist_parser.dart';
 import 'package:test/fake.dart';
 
 import '../../src/common.dart';
+import '../../src/fake_process_manager.dart';
+import '../../src/fakes.dart';
 
 final Platform macPlatform = FakePlatform(
   operatingSystem: 'macos',
   environment: <String, String>{'HOME': '/foo/bar'}
 );
 final Platform linuxPlatform = FakePlatform(
-  operatingSystem: 'linux',
   environment: <String, String>{
-    'HOME': '/foo/bar'
+    'HOME': '/foo/bar',
   },
 );
 final Platform windowsPlatform = FakePlatform(
@@ -31,7 +32,7 @@ final Platform windowsPlatform = FakePlatform(
   environment: <String, String>{
     'USERPROFILE': r'C:\Users\foo',
     'APPDATA': r'C:\Users\foo\AppData\Roaming',
-    'LOCALAPPDATA': r'C:\Users\foo\AppData\Local'
+    'LOCALAPPDATA': r'C:\Users\foo\AppData\Local',
   },
 );
 
@@ -50,7 +51,7 @@ void main() {
       ValidationMessage.error('Flutter plugin version 0.1.3 - the recommended minimum version is 16.0.0'),
       ValidationMessage('Dart plugin version 162.2485'),
       ValidationMessage('For information about installing plugins, see\n'
-          'https://flutter.dev/intellij-setup/#installing-the-plugins')
+          'https://flutter.dev/intellij-setup/#installing-the-plugins'),
     ]);
   });
 
@@ -68,8 +69,8 @@ void main() {
     final Directory installedDirectory = fileSystem.directory(installPath);
     installedDirectory.createSync(recursive: true);
     // Create plugin JAR file for Flutter and Dart plugin.
-    createIntellijFlutterPluginJar(pluginPath + '/flutter-intellij/lib/flutter-intellij.jar', fileSystem, version: '50.0');
-    createIntellijDartPluginJar(pluginPath + '/Dart/lib/Dart.jar', fileSystem);
+    createIntellijFlutterPluginJar('$pluginPath/flutter-intellij/lib/flutter-intellij.jar', fileSystem, version: '50.0');
+    createIntellijDartPluginJar('$pluginPath/Dart/lib/Dart.jar', fileSystem);
 
     final Iterable<DoctorValidator> installed = IntelliJValidatorOnLinux.installed(
       fileSystem: fileSystem,
@@ -78,7 +79,7 @@ void main() {
       );
     expect(1, installed.length);
     final ValidationResult result = await installed.toList()[0].validate();
-    expect(ValidationType.installed, result.type);
+    expect(ValidationType.success, result.type);
   });
 
   testWithoutContext('intellij(2020.1) plugins check on linux (installed via JetBrains ToolBox app)', () async {
@@ -95,8 +96,8 @@ void main() {
     final Directory installedDirectory = fileSystem.directory(installPath);
     installedDirectory.createSync(recursive: true);
     // Create plugin JAR file for Flutter and Dart plugin.
-    createIntellijFlutterPluginJar(pluginPath + '/flutter-intellij/lib/flutter-intellij.jar', fileSystem, version: '50.0');
-    createIntellijDartPluginJar(pluginPath + '/Dart/lib/Dart.jar', fileSystem);
+    createIntellijFlutterPluginJar('$pluginPath/flutter-intellij/lib/flutter-intellij.jar', fileSystem, version: '50.0');
+    createIntellijDartPluginJar('$pluginPath/Dart/lib/Dart.jar', fileSystem);
 
     final Iterable<DoctorValidator> installed = IntelliJValidatorOnLinux.installed(
       fileSystem: fileSystem,
@@ -105,7 +106,7 @@ void main() {
     );
     expect(1, installed.length);
     final ValidationResult result = await installed.toList()[0].validate();
-    expect(ValidationType.installed, result.type);
+    expect(ValidationType.success, result.type);
   });
 
   testWithoutContext('intellij(>=2020.2) plugins check on linux (installed via JetBrains ToolBox app)', () async {
@@ -122,8 +123,8 @@ void main() {
     final Directory installedDirectory = fileSystem.directory(installPath);
     installedDirectory.createSync(recursive: true);
     // Create plugin JAR file for Flutter and Dart plugin.
-    createIntellijFlutterPluginJar(pluginPath + '/flutter-intellij/lib/flutter-intellij.jar', fileSystem, version: '50.0');
-    createIntellijDartPluginJar(pluginPath + '/Dart/lib/Dart.jar', fileSystem);
+    createIntellijFlutterPluginJar('$pluginPath/flutter-intellij/lib/flutter-intellij.jar', fileSystem, version: '50.0');
+    createIntellijDartPluginJar('$pluginPath/Dart/lib/Dart.jar', fileSystem);
 
     final Iterable<DoctorValidator> installed = IntelliJValidatorOnLinux.installed(
       fileSystem: fileSystem,
@@ -132,7 +133,7 @@ void main() {
     );
     expect(1, installed.length);
     final ValidationResult result = await installed.toList()[0].validate();
-    expect(ValidationType.installed, result.type);
+    expect(ValidationType.success, result.type);
   });
 
   testWithoutContext('intellij(2020.1~) plugins check on linux (installed via tar.gz)', () async {
@@ -149,8 +150,8 @@ void main() {
     final Directory installedDirectory = fileSystem.directory(installPath);
     installedDirectory.createSync(recursive: true);
     // Create plugin JAR file for Flutter and Dart plugin.
-    createIntellijFlutterPluginJar(pluginPath + '/flutter-intellij/lib/flutter-intellij.jar', fileSystem, version: '50.0');
-    createIntellijDartPluginJar(pluginPath + '/Dart/lib/Dart.jar', fileSystem);
+    createIntellijFlutterPluginJar('$pluginPath/flutter-intellij/lib/flutter-intellij.jar', fileSystem, version: '50.0');
+    createIntellijDartPluginJar('$pluginPath/Dart/lib/Dart.jar', fileSystem);
 
     final Iterable<DoctorValidator> installed = IntelliJValidatorOnLinux.installed(
       fileSystem: fileSystem,
@@ -159,7 +160,7 @@ void main() {
     );
     expect(1, installed.length);
     final ValidationResult result = await installed.toList()[0].validate();
-    expect(ValidationType.installed, result.type);
+    expect(ValidationType.success, result.type);
   });
 
   testWithoutContext('legacy intellij(<2020) plugins check on windows', () async {
@@ -175,8 +176,8 @@ void main() {
         .writeAsStringSync(installPath, flush: true);
     final Directory installedDirectory = fileSystem.directory(installPath);
     installedDirectory.createSync(recursive: true);
-    createIntellijFlutterPluginJar(pluginPath + '/flutter-intellij/lib/flutter-intellij.jar', fileSystem, version: '50.0');
-    createIntellijDartPluginJar(pluginPath + '/Dart/lib/Dart.jar', fileSystem);
+    createIntellijFlutterPluginJar('$pluginPath/flutter-intellij/lib/flutter-intellij.jar', fileSystem, version: '50.0');
+    createIntellijDartPluginJar('$pluginPath/Dart/lib/Dart.jar', fileSystem);
 
     final Iterable<DoctorValidator> installed = IntelliJValidatorOnWindows.installed(
       fileSystem: fileSystem,
@@ -186,7 +187,7 @@ void main() {
     );
     expect(1, installed.length);
     final ValidationResult result = await installed.toList()[0].validate();
-    expect(ValidationType.installed, result.type);
+    expect(ValidationType.success, result.type);
   });
 
   testWithoutContext('intellij(2020.1 ~ 2020.2) plugins check on windows (installed via JetBrains ToolBox app)', () async {
@@ -213,7 +214,7 @@ void main() {
     );
     expect(1, installed.length);
     final ValidationResult result = await installed.toList()[0].validate();
-    expect(ValidationType.installed, result.type);
+    expect(ValidationType.success, result.type);
   });
 
   testWithoutContext('intellij(>=2020.3) plugins check on windows (installed via JetBrains ToolBox app and plugins)', () async {
@@ -240,7 +241,7 @@ void main() {
     );
     expect(1, installed.length);
     final ValidationResult result = await installed.toList()[0].validate();
-    expect(ValidationType.installed, result.type);
+    expect(ValidationType.success, result.type);
   });
 
   testWithoutContext('intellij(2020.1~) plugins check on windows (installed via installer)', () async {
@@ -267,7 +268,58 @@ void main() {
     );
     expect(1, installed.length);
     final ValidationResult result = await installed.toList()[0].validate();
-    expect(ValidationType.installed, result.type);
+    expect(ValidationType.success, result.type);
+  });
+
+  testWithoutContext('can locate installations on macOS from Spotlight', () {
+    final FileSystem fileSystem = MemoryFileSystem.test();
+    final String ceRandomLocation = fileSystem.path.join(
+      '/',
+      'random',
+      'IntelliJ CE (stable).app',
+    );
+    final String ultimateRandomLocation = fileSystem.path.join(
+      '/',
+      'random',
+      'IntelliJ UE (stable).app',
+    );
+
+    final FakeProcessManager processManager = FakeProcessManager.list(<FakeCommand>[
+      FakeCommand(
+        command: const <String>[
+          'mdfind',
+          'kMDItemCFBundleIdentifier="com.jetbrains.intellij.ce"',
+        ],
+        stdout: ceRandomLocation,
+      ),
+      FakeCommand(
+        command: const <String>[
+          'mdfind',
+          'kMDItemCFBundleIdentifier="com.jetbrains.intellij*"',
+        ],
+        stdout: '$ultimateRandomLocation\n$ceRandomLocation',
+      ),
+    ]);
+    final Iterable<IntelliJValidatorOnMac> validators = IntelliJValidator.installedValidators(
+      fileSystem: fileSystem,
+      platform: macPlatform,
+      userMessages: UserMessages(),
+      processManager: processManager,
+      plistParser: FakePlistParser(<String, String>{
+        PlistParser.kCFBundleShortVersionStringKey: '2020.10',
+        PlistParser.kCFBundleIdentifierKey: 'com.jetbrains.intellij',
+      }),
+      logger: BufferLogger.test(),
+    ).whereType<IntelliJValidatorOnMac>();
+    expect(validators.length, 2);
+
+    final IntelliJValidatorOnMac ce = validators.where((IntelliJValidatorOnMac validator) => validator.id == 'IdeaIC').single;
+    expect(ce.title, 'IntelliJ IDEA Community Edition');
+    expect(ce.installPath, ceRandomLocation);
+
+    final IntelliJValidatorOnMac ultimate = validators.where((IntelliJValidatorOnMac validator) => validator.id == 'IntelliJIdea').single;
+    expect(ultimate.title, 'IntelliJ IDEA Ultimate Edition');
+    expect(ultimate.installPath, ultimateRandomLocation);
   });
 
   testWithoutContext('Intellij plugins path checking on mac', () async {
@@ -323,22 +375,120 @@ void main() {
 
     expect(validator.pluginsPath, '/path/to/JetBrainsToolboxApp.plugins');
   });
-}
 
-class FakePlistParser extends Fake implements PlistParser {
-  FakePlistParser(this.values);
+  testWithoutContext('IntelliJValidatorOnMac.installed() handles FileSystemExceptions)', () async {
+    const FileSystemException exception = FileSystemException('cannot list');
+    final FileSystem fileSystem = _ThrowingFileSystem(exception);
 
-  final Map<String, String> values;
+    final FakeProcessManager processManager = FakeProcessManager.empty();
 
-  @override
-  String getValueFromFile(String plistFilePath, String key) {
-    return values[key];
-  }
+    final Iterable<DoctorValidator> validators = IntelliJValidatorOnMac.installed(
+      fileSystem: fileSystem,
+      fileSystemUtils: FileSystemUtils(fileSystem: fileSystem, platform: macPlatform),
+      userMessages: UserMessages(),
+      plistParser: FakePlistParser(<String, String>{
+        'JetBrainsToolboxApp': '/path/to/JetBrainsToolboxApp',
+        'CFBundleIdentifier': 'com.jetbrains.toolbox.linkapp',
+      }),
+      processManager: processManager,
+      logger: BufferLogger.test(),
+    );
+
+    expect(validators.length, 1);
+    final DoctorValidator validator = validators.first;
+    expect(validator, isA<ValidatorWithResult>());
+    expect(validator.title, 'Cannot determine if IntelliJ is installed');
+  });
+
+  testWithoutContext('Remove JetBrains Toolbox', () async {
+    final FileSystem fileSystem = MemoryFileSystem.test();
+    final List<String> installPaths = <String>[
+      fileSystem.path.join('/', 'foo', 'bar', 'Applications',
+          'JetBrains Toolbox', 'IntelliJ IDEA Ultimate.app'),
+      fileSystem.path.join('/', 'foo', 'bar', 'Applications',
+          'JetBrains Toolbox', 'IntelliJ IDEA Community Edition.app')
+    ];
+
+    for (final String installPath in installPaths) {
+      fileSystem.directory(installPath).createSync(recursive: true);
+    }
+
+    final FakeProcessManager processManager =
+    FakeProcessManager.list(<FakeCommand>[
+      const FakeCommand(command: <String>[
+        'mdfind',
+        'kMDItemCFBundleIdentifier="com.jetbrains.intellij.ce"',
+      ], stdout: 'skip'),
+      const FakeCommand(command: <String>[
+        'mdfind',
+        'kMDItemCFBundleIdentifier="com.jetbrains.intellij*"',
+      ], stdout: 'skip')
+    ]);
+
+    final Iterable<DoctorValidator> installed = IntelliJValidatorOnMac.installed(
+      fileSystem: fileSystem,
+      fileSystemUtils: FileSystemUtils(fileSystem: fileSystem, platform: macPlatform),
+      userMessages: UserMessages(),
+      plistParser: FakePlistParser(<String, String>{
+        'JetBrainsToolboxApp': '/path/to/JetBrainsToolboxApp',
+        'CFBundleIdentifier': 'com.jetbrains.toolbox.linkapp',
+      }),
+      processManager: processManager,
+      logger: BufferLogger.test(),
+    );
+
+    expect(installed.length, 0);
+    expect(processManager, hasNoRemainingExpectations);
+  });
+
+  testWithoutContext('Does not crash when installation is missing its CFBundleIdentifier property', () async {
+    final BufferLogger logger = BufferLogger.test();
+    final FileSystem fileSystem = MemoryFileSystem.test();
+    final String ultimatePath = fileSystem.path.join('/', 'foo', 'bar', 'Applications',
+          'JetBrains Toolbox', 'IntelliJ IDEA Ultimate.app');
+    final String communityEditionPath = fileSystem.path.join('/', 'foo', 'bar', 'Applications',
+          'JetBrains Toolbox', 'IntelliJ IDEA Community Edition.app');
+    final List<String> installPaths = <String>[
+      ultimatePath,
+      communityEditionPath
+    ];
+
+    for (final String installPath in installPaths) {
+      fileSystem.directory(installPath).createSync(recursive: true);
+    }
+
+    final FakeProcessManager processManager =
+    FakeProcessManager.list(<FakeCommand>[
+      FakeCommand(command: const <String>[
+        'mdfind',
+        'kMDItemCFBundleIdentifier="com.jetbrains.intellij.ce"',
+      ], stdout: communityEditionPath),
+      FakeCommand(command: const <String>[
+        'mdfind',
+        'kMDItemCFBundleIdentifier="com.jetbrains.intellij*"',
+      ], stdout: ultimatePath)
+    ]);
+
+    final Iterable<DoctorValidator> installed = IntelliJValidatorOnMac.installed(
+      fileSystem: fileSystem,
+      fileSystemUtils: FileSystemUtils(fileSystem: fileSystem, platform: macPlatform),
+      userMessages: UserMessages(),
+      plistParser: FakePlistParser(<String, String>{
+        'JetBrainsToolboxApp': '/path/to/JetBrainsToolboxApp',
+      }),
+      processManager: processManager,
+      logger: logger,
+    );
+
+    expect(installed.length, 2);
+    expect(logger.traceText, contains('installation at $ultimatePath has a null CFBundleIdentifierKey'));
+    expect(processManager, hasNoRemainingExpectations);
+  });
 }
 
 class IntelliJValidatorTestTarget extends IntelliJValidator {
-  IntelliJValidatorTestTarget(String title, String installPath,  FileSystem fileSystem)
-    : super(title, installPath, fileSystem: fileSystem, userMessages: UserMessages());
+  IntelliJValidatorTestTarget(super.title, super.installPath,  FileSystem fileSystem)
+    : super(fileSystem: fileSystem, userMessages: UserMessages());
 
   @override
   String get pluginsPath => 'plugins';
@@ -378,8 +528,7 @@ void createIntellijFlutterPluginJar(String pluginJarPath, FileSystem fileSystem,
   flutterPlugins.addFile(ArchiveFile('META-INF/plugin.xml', flutterPluginBytes.length, flutterPluginBytes));
   fileSystem.file(pluginJarPath)
     ..createSync(recursive: true)
-    ..writeAsBytesSync(ZipEncoder().encode(flutterPlugins));
-
+    ..writeAsBytesSync(ZipEncoder().encode(flutterPlugins)!);
 }
 
 /// A helper to create a Intellij Dart plugin jar.
@@ -415,5 +564,32 @@ void createIntellijDartPluginJar(String pluginJarPath, FileSystem fileSystem) {
   dartPlugins.addFile(ArchiveFile('META-INF/plugin.xml', dartPluginBytes.length, dartPluginBytes));
   fileSystem.file(pluginJarPath)
     ..createSync(recursive: true)
-    ..writeAsBytesSync(ZipEncoder().encode(dartPlugins));
+    ..writeAsBytesSync(ZipEncoder().encode(dartPlugins)!);
+}
+
+// TODO(fujino): this should use the MemoryFileSystem and a
+// FileExceptionHandler, blocked by https://github.com/google/file.dart/issues/227.
+class _ThrowingFileSystem extends Fake implements FileSystem {
+  _ThrowingFileSystem(this._exception);
+
+  final Exception _exception;
+  final MemoryFileSystem memfs = MemoryFileSystem.test();
+
+  @override
+  Context get path => memfs.path;
+
+  @override
+  Directory directory(dynamic _) => _ThrowingDirectory(_exception);
+}
+
+class _ThrowingDirectory extends Fake implements Directory {
+  _ThrowingDirectory(this._exception);
+
+  final Exception _exception;
+
+  @override
+  bool existsSync() => true;
+
+  @override
+  List<FileSystemEntity> listSync({bool recursive = false, bool followLinks = true}) => throw _exception;
 }

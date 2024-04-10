@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 import 'package:flutter/foundation.dart';
-import '../flutter_test_alternative.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test('SynchronousFuture control test', () async {
@@ -40,7 +40,7 @@ void main() {
 
     Object? exception;
     try {
-      await future.whenComplete(() { // ignore: void_checks, https://github.com/dart-lang/linter/issues/1675
+      await future.whenComplete(() {
         throw ArgumentError();
       });
       // Unreached.

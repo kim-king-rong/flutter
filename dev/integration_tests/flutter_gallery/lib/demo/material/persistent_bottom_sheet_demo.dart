@@ -7,10 +7,12 @@ import 'package:flutter/material.dart';
 import '../../gallery/demo.dart';
 
 class PersistentBottomSheetDemo extends StatefulWidget {
+  const PersistentBottomSheetDemo({super.key});
+
   static const String routeName = '/material/persistent-bottom-sheet';
 
   @override
-  _PersistentBottomSheetDemoState createState() => _PersistentBottomSheetDemoState();
+  State<PersistentBottomSheetDemo> createState() => _PersistentBottomSheetDemoState();
 }
 
 class _PersistentBottomSheetDemoState extends State<PersistentBottomSheetDemo> {
@@ -28,7 +30,7 @@ class _PersistentBottomSheetDemoState extends State<PersistentBottomSheetDemo> {
     setState(() { // disable the button
       _showBottomSheetCallback = null;
     });
-    _scaffoldKey.currentState!.showBottomSheet<void>((BuildContext context) {
+    _scaffoldKey.currentState!.showBottomSheet((BuildContext context) {
       final ThemeData themeData = Theme.of(context);
       return Container(
         decoration: BoxDecoration(
@@ -39,7 +41,7 @@ class _PersistentBottomSheetDemoState extends State<PersistentBottomSheetDemo> {
           child: Text('This is a Material persistent bottom sheet. Drag downwards to dismiss it.',
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: themeData.accentColor,
+              color: themeData.colorScheme.secondary,
               fontSize: 24.0,
             ),
           ),

@@ -2,21 +2,20 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'package:integration_ui/keys.dart' as keys;
 import 'package:flutter_driver/flutter_driver.dart';
-
+import 'package:integration_ui/keys.dart' as keys;
 import 'package:test/test.dart' hide TypeMatcher, isInstanceOf;
 
 void main() {
   group('end-to-end test', () {
-    FlutterDriver driver;
+    late FlutterDriver driver;
 
     setUpAll(() async {
       driver = await FlutterDriver.connect();
     });
 
     tearDownAll(() async {
-      await driver?.close();
+      await driver.close();
     });
 
     test('Ensure keyboard dismissal resizes the view to original size', () async {
@@ -33,7 +32,7 @@ void main() {
       await driver.tap(defaultTextField);
 
       bool heightTextDidShrink = false;
-      for (int i = 0; i < 3; ++i) {
+      for (int i = 0; i < 6; ++i) {
         await Future<void>.delayed(const Duration(seconds: 1));
         // Measure the height with keyboard displayed.
         final String heightWithKeyboardShown = await driver.getText(heightText);
@@ -60,6 +59,6 @@ void main() {
         }
       }
       expect(heightTextDidExpand, isTrue);
-    });
+    }, timeout: Timeout.none);
   });
 }

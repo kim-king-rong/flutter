@@ -4,6 +4,8 @@
 
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
+
 import 'box.dart';
 import 'layer.dart';
 import 'layout_helper.dart';
@@ -121,14 +123,7 @@ class RenderWrap extends RenderBox
     TextDirection? textDirection,
     VerticalDirection verticalDirection = VerticalDirection.down,
     Clip clipBehavior = Clip.none,
-  }) : assert(direction != null),
-       assert(alignment != null),
-       assert(spacing != null),
-       assert(runAlignment != null),
-       assert(runSpacing != null),
-       assert(crossAxisAlignment != null),
-       assert(clipBehavior != null),
-       _direction = direction,
+  }) : _direction = direction,
        _alignment = alignment,
        _spacing = spacing,
        _runAlignment = runAlignment,
@@ -149,9 +144,9 @@ class RenderWrap extends RenderBox
   Axis get direction => _direction;
   Axis _direction;
   set direction (Axis value) {
-    assert(value != null);
-    if (_direction == value)
+    if (_direction == value) {
       return;
+    }
     _direction = value;
     markNeedsLayout();
   }
@@ -172,9 +167,9 @@ class RenderWrap extends RenderBox
   WrapAlignment get alignment => _alignment;
   WrapAlignment _alignment;
   set alignment (WrapAlignment value) {
-    assert(value != null);
-    if (_alignment == value)
+    if (_alignment == value) {
       return;
+    }
     _alignment = value;
     markNeedsLayout();
   }
@@ -193,9 +188,9 @@ class RenderWrap extends RenderBox
   double get spacing => _spacing;
   double _spacing;
   set spacing (double value) {
-    assert(value != null);
-    if (_spacing == value)
+    if (_spacing == value) {
       return;
+    }
     _spacing = value;
     markNeedsLayout();
   }
@@ -217,9 +212,9 @@ class RenderWrap extends RenderBox
   WrapAlignment get runAlignment => _runAlignment;
   WrapAlignment _runAlignment;
   set runAlignment (WrapAlignment value) {
-    assert(value != null);
-    if (_runAlignment == value)
+    if (_runAlignment == value) {
       return;
+    }
     _runAlignment = value;
     markNeedsLayout();
   }
@@ -237,9 +232,9 @@ class RenderWrap extends RenderBox
   double get runSpacing => _runSpacing;
   double _runSpacing;
   set runSpacing (double value) {
-    assert(value != null);
-    if (_runSpacing == value)
+    if (_runSpacing == value) {
       return;
+    }
     _runSpacing = value;
     markNeedsLayout();
   }
@@ -262,9 +257,9 @@ class RenderWrap extends RenderBox
   WrapCrossAlignment get crossAxisAlignment => _crossAxisAlignment;
   WrapCrossAlignment _crossAxisAlignment;
   set crossAxisAlignment (WrapCrossAlignment value) {
-    assert(value != null);
-    if (_crossAxisAlignment == value)
+    if (_crossAxisAlignment == value) {
       return;
+    }
     _crossAxisAlignment = value;
     markNeedsLayout();
   }
@@ -334,11 +329,10 @@ class RenderWrap extends RenderBox
 
   /// {@macro flutter.material.Material.clipBehavior}
   ///
-  /// Defaults to [Clip.none], and must not be null.
+  /// Defaults to [Clip.none].
   Clip get clipBehavior => _clipBehavior;
   Clip _clipBehavior = Clip.none;
   set clipBehavior(Clip value) {
-    assert(value != null);
     if (value != _clipBehavior) {
       _clipBehavior = value;
       markNeedsPaint();
@@ -347,18 +341,12 @@ class RenderWrap extends RenderBox
   }
 
   bool get _debugHasNecessaryDirections {
-    assert(direction != null);
-    assert(alignment != null);
-    assert(runAlignment != null);
-    assert(crossAxisAlignment != null);
     if (firstChild != null && lastChild != firstChild) {
       // i.e. there's more than one child
       switch (direction) {
         case Axis.horizontal:
           assert(textDirection != null, 'Horizontal $runtimeType with multiple children has a null textDirection, so the layout order is undefined.');
-          break;
         case Axis.vertical:
-          assert(verticalDirection != null, 'Vertical $runtimeType with multiple children has a null verticalDirection, so the layout order is undefined.');
           break;
       }
     }
@@ -366,30 +354,24 @@ class RenderWrap extends RenderBox
       switch (direction) {
         case Axis.horizontal:
           assert(textDirection != null, 'Horizontal $runtimeType with alignment $alignment has a null textDirection, so the alignment cannot be resolved.');
-          break;
         case Axis.vertical:
-          assert(verticalDirection != null, 'Vertical $runtimeType with alignment $alignment has a null verticalDirection, so the alignment cannot be resolved.');
           break;
       }
     }
     if (runAlignment == WrapAlignment.start || runAlignment == WrapAlignment.end) {
       switch (direction) {
         case Axis.horizontal:
-          assert(verticalDirection != null, 'Horizontal $runtimeType with runAlignment $runAlignment has a null verticalDirection, so the alignment cannot be resolved.');
           break;
         case Axis.vertical:
           assert(textDirection != null, 'Vertical $runtimeType with runAlignment $runAlignment has a null textDirection, so the alignment cannot be resolved.');
-          break;
       }
     }
     if (crossAxisAlignment == WrapCrossAlignment.start || crossAxisAlignment == WrapCrossAlignment.end) {
       switch (direction) {
         case Axis.horizontal:
-          assert(verticalDirection != null, 'Horizontal $runtimeType with crossAxisAlignment $crossAxisAlignment has a null verticalDirection, so the alignment cannot be resolved.');
           break;
         case Axis.vertical:
           assert(textDirection != null, 'Vertical $runtimeType with crossAxisAlignment $crossAxisAlignment has a null textDirection, so the alignment cannot be resolved.');
-          break;
       }
     }
     return true;
@@ -397,8 +379,9 @@ class RenderWrap extends RenderBox
 
   @override
   void setupParentData(RenderBox child) {
-    if (child.parentData is! WrapParentData)
+    if (child.parentData is! WrapParentData) {
       child.parentData = WrapParentData();
+    }
   }
 
   @override
@@ -413,7 +396,7 @@ class RenderWrap extends RenderBox
         }
         return width;
       case Axis.vertical:
-        return computeDryLayout(BoxConstraints(maxHeight: height)).width;
+        return getDryLayout(BoxConstraints(maxHeight: height)).width;
     }
   }
 
@@ -429,7 +412,7 @@ class RenderWrap extends RenderBox
         }
         return width;
       case Axis.vertical:
-        return computeDryLayout(BoxConstraints(maxHeight: height)).width;
+        return getDryLayout(BoxConstraints(maxHeight: height)).width;
     }
   }
 
@@ -437,7 +420,7 @@ class RenderWrap extends RenderBox
   double computeMinIntrinsicHeight(double width) {
     switch (direction) {
       case Axis.horizontal:
-        return computeDryLayout(BoxConstraints(maxWidth: width)).height;
+        return getDryLayout(BoxConstraints(maxWidth: width)).height;
       case Axis.vertical:
         double height = 0.0;
         RenderBox? child = firstChild;
@@ -453,7 +436,7 @@ class RenderWrap extends RenderBox
   double computeMaxIntrinsicHeight(double width) {
     switch (direction) {
       case Axis.horizontal:
-        return computeDryLayout(BoxConstraints(maxWidth: width)).height;
+        return getDryLayout(BoxConstraints(maxWidth: width)).height;
       case Axis.vertical:
         double height = 0.0;
         RenderBox? child = firstChild;
@@ -471,64 +454,48 @@ class RenderWrap extends RenderBox
   }
 
   double _getMainAxisExtent(Size childSize) {
-    switch (direction) {
-      case Axis.horizontal:
-        return childSize.width;
-      case Axis.vertical:
-        return childSize.height;
-    }
+    return switch (direction) {
+      Axis.horizontal => childSize.width,
+      Axis.vertical   => childSize.height,
+    };
   }
 
   double _getCrossAxisExtent(Size childSize) {
-    switch (direction) {
-      case Axis.horizontal:
-        return childSize.height;
-      case Axis.vertical:
-        return childSize.width;
-    }
+    return switch (direction) {
+      Axis.horizontal => childSize.height,
+      Axis.vertical   => childSize.width,
+    };
   }
 
   Offset _getOffset(double mainAxisOffset, double crossAxisOffset) {
-    switch (direction) {
-      case Axis.horizontal:
-        return Offset(mainAxisOffset, crossAxisOffset);
-      case Axis.vertical:
-        return Offset(crossAxisOffset, mainAxisOffset);
-    }
+    return switch (direction) {
+      Axis.horizontal => Offset(mainAxisOffset, crossAxisOffset),
+      Axis.vertical   => Offset(crossAxisOffset, mainAxisOffset),
+    };
   }
 
   double _getChildCrossAxisOffset(bool flipCrossAxis, double runCrossAxisExtent, double childCrossAxisExtent) {
     final double freeSpace = runCrossAxisExtent - childCrossAxisExtent;
-    switch (crossAxisAlignment) {
-      case WrapCrossAlignment.start:
-        return flipCrossAxis ? freeSpace : 0.0;
-      case WrapCrossAlignment.end:
-        return flipCrossAxis ? 0.0 : freeSpace;
-      case WrapCrossAlignment.center:
-        return freeSpace / 2.0;
-    }
+    return switch (crossAxisAlignment) {
+      WrapCrossAlignment.start  => flipCrossAxis ? freeSpace : 0.0,
+      WrapCrossAlignment.end    => flipCrossAxis ? 0.0 : freeSpace,
+      WrapCrossAlignment.center => freeSpace / 2.0,
+    };
   }
 
   bool _hasVisualOverflow = false;
 
   @override
-  Size computeDryLayout(BoxConstraints constraints) {
+  @protected
+  Size computeDryLayout(covariant BoxConstraints constraints) {
     return _computeDryLayout(constraints);
   }
 
   Size _computeDryLayout(BoxConstraints constraints, [ChildLayouter layoutChild = ChildLayoutHelper.dryLayoutChild]) {
-    final BoxConstraints childConstraints;
-    double mainAxisLimit = 0.0;
-    switch (direction) {
-      case Axis.horizontal:
-        childConstraints = BoxConstraints(maxWidth: constraints.maxWidth);
-        mainAxisLimit = constraints.maxWidth;
-        break;
-      case Axis.vertical:
-        childConstraints = BoxConstraints(maxHeight: constraints.maxHeight);
-        mainAxisLimit = constraints.maxHeight;
-        break;
-    }
+    final (BoxConstraints childConstraints, double mainAxisLimit) = switch (direction) {
+      Axis.horizontal => (BoxConstraints(maxWidth: constraints.maxWidth), constraints.maxWidth),
+      Axis.vertical => (BoxConstraints(maxHeight: constraints.maxHeight), constraints.maxHeight),
+    };
 
     double mainAxisExtent = 0.0;
     double crossAxisExtent = 0.0;
@@ -550,20 +517,19 @@ class RenderWrap extends RenderBox
       }
       runMainAxisExtent += childMainAxisExtent;
       runCrossAxisExtent = math.max(runCrossAxisExtent, childCrossAxisExtent);
-      if (childCount > 0)
+      if (childCount > 0) {
         runMainAxisExtent += spacing;
+      }
       childCount += 1;
       child = childAfter(child);
     }
     crossAxisExtent += runCrossAxisExtent;
     mainAxisExtent = math.max(mainAxisExtent, runMainAxisExtent);
 
-    switch (direction) {
-      case Axis.horizontal:
-        return constraints.constrain(Size(mainAxisExtent, crossAxisExtent));
-      case Axis.vertical:
-        return constraints.constrain(Size(crossAxisExtent, mainAxisExtent));
-    }
+    return constraints.constrain(switch (direction) {
+      Axis.horizontal => Size(mainAxisExtent, crossAxisExtent),
+      Axis.vertical   => Size(crossAxisExtent, mainAxisExtent),
+    });
   }
 
   @override
@@ -584,22 +550,22 @@ class RenderWrap extends RenderBox
       case Axis.horizontal:
         childConstraints = BoxConstraints(maxWidth: constraints.maxWidth);
         mainAxisLimit = constraints.maxWidth;
-        if (textDirection == TextDirection.rtl)
+        if (textDirection == TextDirection.rtl) {
           flipMainAxis = true;
-        if (verticalDirection == VerticalDirection.up)
+        }
+        if (verticalDirection == VerticalDirection.up) {
           flipCrossAxis = true;
-        break;
+        }
       case Axis.vertical:
         childConstraints = BoxConstraints(maxHeight: constraints.maxHeight);
         mainAxisLimit = constraints.maxHeight;
-        if (verticalDirection == VerticalDirection.up)
+        if (verticalDirection == VerticalDirection.up) {
           flipMainAxis = true;
-        if (textDirection == TextDirection.rtl)
+        }
+        if (textDirection == TextDirection.rtl) {
           flipCrossAxis = true;
-        break;
+        }
     }
-    assert(childConstraints != null);
-    assert(mainAxisLimit != null);
     final double spacing = this.spacing;
     final double runSpacing = this.runSpacing;
     final List<_RunMetrics> runMetrics = <_RunMetrics>[];
@@ -615,16 +581,18 @@ class RenderWrap extends RenderBox
       if (childCount > 0 && runMainAxisExtent + spacing + childMainAxisExtent > mainAxisLimit) {
         mainAxisExtent = math.max(mainAxisExtent, runMainAxisExtent);
         crossAxisExtent += runCrossAxisExtent;
-        if (runMetrics.isNotEmpty)
+        if (runMetrics.isNotEmpty) {
           crossAxisExtent += runSpacing;
+        }
         runMetrics.add(_RunMetrics(runMainAxisExtent, runCrossAxisExtent, childCount));
         runMainAxisExtent = 0.0;
         runCrossAxisExtent = 0.0;
         childCount = 0;
       }
       runMainAxisExtent += childMainAxisExtent;
-      if (childCount > 0)
+      if (childCount > 0) {
         runMainAxisExtent += spacing;
+      }
       runCrossAxisExtent = math.max(runCrossAxisExtent, childCrossAxisExtent);
       childCount += 1;
       final WrapParentData childParentData = child.parentData! as WrapParentData;
@@ -634,8 +602,9 @@ class RenderWrap extends RenderBox
     if (childCount > 0) {
       mainAxisExtent = math.max(mainAxisExtent, runMainAxisExtent);
       crossAxisExtent += runCrossAxisExtent;
-      if (runMetrics.isNotEmpty)
+      if (runMetrics.isNotEmpty) {
         crossAxisExtent += runSpacing;
+      }
       runMetrics.add(_RunMetrics(runMainAxisExtent, runCrossAxisExtent, childCount));
     }
 
@@ -650,12 +619,10 @@ class RenderWrap extends RenderBox
         size = constraints.constrain(Size(mainAxisExtent, crossAxisExtent));
         containerMainAxisExtent = size.width;
         containerCrossAxisExtent = size.height;
-        break;
       case Axis.vertical:
         size = constraints.constrain(Size(crossAxisExtent, mainAxisExtent));
         containerMainAxisExtent = size.height;
         containerCrossAxisExtent = size.width;
-        break;
     }
 
     _hasVisualOverflow = containerMainAxisExtent < mainAxisExtent || containerCrossAxisExtent < crossAxisExtent;
@@ -668,21 +635,16 @@ class RenderWrap extends RenderBox
         break;
       case WrapAlignment.end:
         runLeadingSpace = crossAxisFreeSpace;
-        break;
       case WrapAlignment.center:
         runLeadingSpace = crossAxisFreeSpace / 2.0;
-        break;
       case WrapAlignment.spaceBetween:
         runBetweenSpace = runCount > 1 ? crossAxisFreeSpace / (runCount - 1) : 0.0;
-        break;
       case WrapAlignment.spaceAround:
         runBetweenSpace = crossAxisFreeSpace / runCount;
         runLeadingSpace = runBetweenSpace / 2.0;
-        break;
       case WrapAlignment.spaceEvenly:
         runBetweenSpace = crossAxisFreeSpace / (runCount + 1);
         runLeadingSpace = runBetweenSpace;
-        break;
     }
 
     runBetweenSpace += runSpacing;
@@ -704,50 +666,50 @@ class RenderWrap extends RenderBox
           break;
         case WrapAlignment.end:
           childLeadingSpace = mainAxisFreeSpace;
-          break;
         case WrapAlignment.center:
           childLeadingSpace = mainAxisFreeSpace / 2.0;
-          break;
         case WrapAlignment.spaceBetween:
           childBetweenSpace = childCount > 1 ? mainAxisFreeSpace / (childCount - 1) : 0.0;
-          break;
         case WrapAlignment.spaceAround:
           childBetweenSpace = mainAxisFreeSpace / childCount;
           childLeadingSpace = childBetweenSpace / 2.0;
-          break;
         case WrapAlignment.spaceEvenly:
           childBetweenSpace = mainAxisFreeSpace / (childCount + 1);
           childLeadingSpace = childBetweenSpace;
-          break;
       }
 
       childBetweenSpace += spacing;
       double childMainPosition = flipMainAxis ? containerMainAxisExtent - childLeadingSpace : childLeadingSpace;
 
-      if (flipCrossAxis)
+      if (flipCrossAxis) {
         crossAxisOffset -= runCrossAxisExtent;
+      }
 
       while (child != null) {
         final WrapParentData childParentData = child.parentData! as WrapParentData;
-        if (childParentData._runIndex != i)
+        if (childParentData._runIndex != i) {
           break;
+        }
         final double childMainAxisExtent = _getMainAxisExtent(child.size);
         final double childCrossAxisExtent = _getCrossAxisExtent(child.size);
         final double childCrossAxisOffset = _getChildCrossAxisOffset(flipCrossAxis, runCrossAxisExtent, childCrossAxisExtent);
-        if (flipMainAxis)
+        if (flipMainAxis) {
           childMainPosition -= childMainAxisExtent;
+        }
         childParentData.offset = _getOffset(childMainPosition, crossAxisOffset + childCrossAxisOffset);
-        if (flipMainAxis)
+        if (flipMainAxis) {
           childMainPosition -= childBetweenSpace;
-        else
+        } else {
           childMainPosition += childMainAxisExtent + childBetweenSpace;
+        }
         child = childParentData.nextSibling;
       }
 
-      if (flipCrossAxis)
+      if (flipCrossAxis) {
         crossAxisOffset -= runBetweenSpace;
-      else
+      } else {
         crossAxisOffset += runCrossAxisExtent + runBetweenSpace;
+      }
     }
   }
 
@@ -761,15 +723,27 @@ class RenderWrap extends RenderBox
     // TODO(ianh): move the debug flex overflow paint logic somewhere common so
     // it can be reused here
     if (_hasVisualOverflow && clipBehavior != Clip.none) {
-      _clipRectLayer = context.pushClipRect(needsCompositing, offset, Offset.zero & size, defaultPaint,
-          clipBehavior: clipBehavior, oldLayer: _clipRectLayer);
+      _clipRectLayer.layer = context.pushClipRect(
+        needsCompositing,
+        offset,
+        Offset.zero & size,
+        defaultPaint,
+        clipBehavior: clipBehavior,
+        oldLayer: _clipRectLayer.layer,
+      );
     } else {
-      _clipRectLayer = null;
+      _clipRectLayer.layer = null;
       defaultPaint(context, offset);
     }
   }
 
-  ClipRectLayer? _clipRectLayer;
+  final LayerHandle<ClipRectLayer> _clipRectLayer = LayerHandle<ClipRectLayer>();
+
+  @override
+  void dispose() {
+    _clipRectLayer.layer = null;
+    super.dispose();
+  }
 
   @override
   void debugFillProperties(DiagnosticPropertiesBuilder properties) {

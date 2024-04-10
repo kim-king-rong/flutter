@@ -15,12 +15,12 @@ void main() {
       fileSystem.path.join(flutterTools, 'lib', 'src', 'commands'),
       fileSystem.path.join(flutterTools, 'lib', 'src', 'test'),
     ];
-    bool _isNotSkipped(FileSystemEntity entity) => skippedPaths.every((String path) => !entity.path.startsWith(path));
+    bool isNotSkipped(FileSystemEntity entity) => skippedPaths.every((String path) => !entity.path.startsWith(path));
 
     final Iterable<File> files = fileSystem.directory(fileSystem.path.join(flutterTools, 'lib', 'src'))
       .listSync(recursive: true)
       .where(_isDartFile)
-      .where(_isNotSkipped)
+      .where(isNotSkipped)
       .map(_asFile);
     for (final File file in files) {
       for (final String line in file.readAsLinesSync()) {
@@ -39,20 +39,21 @@ void main() {
 
   test('no imports of globals without a global prefix', () {
     final List<String> skippedPaths = <String> [];
-    bool _isNotSkipped(FileSystemEntity entity) => skippedPaths.every((String path) => !entity.path.startsWith(path));
+    bool isNotSkipped(FileSystemEntity entity) => skippedPaths.every((String path) => !entity.path.startsWith(path));
 
     final Iterable<File> files = fileSystem.directory(fileSystem.path.join(flutterTools, 'lib', 'src'))
       .listSync(recursive: true)
       .followedBy(fileSystem.directory(fileSystem.path.join(flutterTools, 'test',)).listSync(recursive: true))
       .where(_isDartFile)
-      .where(_isNotSkipped)
+      .where(isNotSkipped)
       .map(_asFile);
     for (final File file in files) {
       for (final String line in file.readAsLinesSync()) {
-        if (line.startsWith(RegExp(r'import.*globals.dart'))
-         && !line.contains(r'as globals')) {
+        if ((line.startsWith(RegExp(r'import.*globals.dart')) ||
+                line.startsWith(RegExp(r'import.*globals_null_migrated.dart'))) &&
+            !line.contains(r'as globals')) {
           final String relativePath = fileSystem.path.relative(file.path, from:flutterTools);
-          fail('$relativePath imports globals.dart without a globals prefix.');
+          fail('$relativePath imports globals_null_migrated.dart or globals.dart without a globals prefix.');
         }
       }
     }
@@ -60,24 +61,52 @@ void main() {
 
   test('no unauthorized imports of dart:io', () {
     final List<String> allowedPaths = <String>[
+      // This is a standalone script invoked by xcode, not part of the tool
+      fileSystem.path.join(flutterTools, 'bin', 'xcode_backend.dart'),
       fileSystem.path.join(flutterTools, 'lib', 'src', 'base', 'io.dart'),
       fileSystem.path.join(flutterTools, 'lib', 'src', 'base', 'platform.dart'),
       fileSystem.path.join(flutterTools, 'lib', 'src', 'base', 'error_handling_io.dart'),
+      fileSystem.path.join(flutterTools, 'lib', 'src', 'base', 'multi_root_file_system.dart'),
     ];
-    bool _isNotAllowed(FileSystemEntity entity) => allowedPaths.every((String path) => path != entity.path);
+    bool isNotAllowed(FileSystemEntity entity) => allowedPaths.every((String path) => path != entity.path);
 
     for (final String dirName in <String>['lib', 'bin']) {
       final Iterable<File> files = fileSystem.directory(fileSystem.path.join(flutterTools, dirName))
         .listSync(recursive: true)
         .where(_isDartFile)
-        .where(_isNotAllowed)
+        .where(isNotAllowed)
         .map(_asFile);
       for (final File file in files) {
         for (final String line in file.readAsLinesSync()) {
           if (line.startsWith(RegExp(r'import.*dart:io')) &&
-              !line.contains('ignore: dart_io_import')) {
+              !line.contains('flutter_ignore: dart_io_import')) {
             final String relativePath = fileSystem.path.relative(file.path, from:flutterTools);
             fail("$relativePath imports 'dart:io'; import 'lib/src/base/io.dart' instead");
+          }
+        }
+      }
+    }
+  });
+
+  test('no unauthorized imports of package:http', () {
+    final List<String> allowedPaths = <String>[
+      // Used only for multi-part file uploads, which are non-trivial to reimplement.
+      fileSystem.path.join(flutterTools, 'lib', 'src', 'reporting', 'crash_reporting.dart'),
+    ];
+    bool isNotAllowed(FileSystemEntity entity) => allowedPaths.every((String path) => path != entity.path);
+
+    for (final String dirName in <String>['lib', 'bin']) {
+      final Iterable<File> files = fileSystem.directory(fileSystem.path.join(flutterTools, dirName))
+        .listSync(recursive: true)
+        .where(_isDartFile)
+        .where(isNotAllowed)
+        .map(_asFile);
+      for (final File file in files) {
+        for (final String line in file.readAsLinesSync()) {
+          if (line.startsWith(RegExp(r'import.*package:http/')) &&
+              !line.contains('flutter_ignore: package_http_import')) {
+            final String relativePath = fileSystem.path.relative(file.path, from:flutterTools);
+            fail("$relativePath imports 'package:http'; import 'lib/src/base/io.dart' instead");
           }
         }
       }
@@ -90,18 +119,18 @@ void main() {
       fileSystem.path.join(flutterTools, 'lib', 'src', 'test', 'flutter_web_platform.dart'),
       fileSystem.path.join(flutterTools, 'lib', 'src', 'test', 'test_wrapper.dart'),
     ];
-    bool _isNotAllowed(FileSystemEntity entity) => allowedPaths.every((String path) => path != entity.path);
+    bool isNotAllowed(FileSystemEntity entity) => allowedPaths.every((String path) => path != entity.path);
 
     for (final String dirName in <String>['lib']) {
       final Iterable<File> files = fileSystem.directory(fileSystem.path.join(flutterTools, dirName))
         .listSync(recursive: true)
         .where(_isDartFile)
-        .where(_isNotAllowed)
+        .where(isNotAllowed)
         .map(_asFile);
       for (final File file in files) {
         for (final String line in file.readAsLinesSync()) {
           if (line.startsWith(RegExp(r'import.*package:test_api')) &&
-              !line.contains('ignore: test_api_import')) {
+              !line.contains('flutter_ignore: test_api_import')) {
             final String relativePath = fileSystem.path.relative(file.path, from:flutterTools);
             fail("$relativePath imports 'package:test_api/test_api.dart';");
           }
@@ -124,7 +153,7 @@ void main() {
       for (final File file in files) {
         for (final String line in file.readAsLinesSync()) {
           if (line.startsWith(RegExp(r'import.*package:path/path.dart')) &&
-              !line.contains('ignore: package_path_import')) {
+              !line.contains('flutter_ignore: package_path_import')) {
             final String relativePath = fileSystem.path.relative(file.path, from:flutterTools);
             fail("$relativePath imports 'package:path/path.dart'; use 'fileSystem.path' instead");
           }
@@ -160,18 +189,18 @@ void main() {
       fileSystem.path.join(flutterTools, 'lib', 'src', 'convert.dart'),
       fileSystem.path.join(flutterTools, 'lib', 'src', 'base', 'error_handling_io.dart'),
     ];
-    bool _isNotAllowed(FileSystemEntity entity) => allowedPaths.every((String path) => path != entity.path);
+    bool isNotAllowed(FileSystemEntity entity) => allowedPaths.every((String path) => path != entity.path);
 
     for (final String dirName in <String>['lib']) {
       final Iterable<File> files = fileSystem.directory(fileSystem.path.join(flutterTools, dirName))
         .listSync(recursive: true)
         .where(_isDartFile)
-        .where(_isNotAllowed)
+        .where(isNotAllowed)
         .map(_asFile);
       for (final File file in files) {
         for (final String line in file.readAsLinesSync()) {
           if (line.startsWith(RegExp(r'import.*dart:convert')) &&
-              !line.contains('ignore: dart_convert_import')) {
+              !line.contains('flutter_ignore: dart_convert_import')) {
             final String relativePath = fileSystem.path.relative(file.path, from:flutterTools);
             fail("$relativePath imports 'dart:convert'; import 'lib/src/convert.dart' instead");
           }
@@ -188,13 +217,13 @@ void main() {
       fileSystem.path.join(flutterTools, 'lib', 'devfs_web.dart'),
       fileSystem.path.join(flutterTools, 'lib', 'resident_web_runner.dart'),
     ];
-    bool _isNotAllowed(FileSystemEntity entity) => allowedPaths.every((String path) => !entity.path.contains(path));
+    bool isNotAllowed(FileSystemEntity entity) => allowedPaths.every((String path) => !entity.path.contains(path));
 
     for (final String dirName in <String>['lib']) {
       final Iterable<File> files = fileSystem.directory(fileSystem.path.join(flutterTools, dirName))
         .listSync(recursive: true)
         .where(_isDartFile)
-        .where(_isNotAllowed)
+        .where(isNotAllowed)
         .map(_asFile);
       for (final File file in files) {
         for (final String line in file.readAsLinesSync()) {

@@ -3,9 +3,8 @@
 // found in the LICENSE file.
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/painting.dart';
-import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 const double _doubleColorPrecision = 0.01;
 
@@ -103,7 +102,7 @@ void main() {
           within<HSVColor>(distance: _doubleColorPrecision, from: hsvColor),
         );
       }
-      // output.add(new HSVColor.fromAHSV(1.0, 0.0, 1.0, value).toColor());
+      // output.add(HSVColor.fromAHSV(1.0, 0.0, 1.0, value).toColor());
     }
     final List<Color> expectedColors = <Color>[
       const Color(0xff000000),
@@ -119,6 +118,12 @@ void main() {
       const Color(0xffff0000),
     ];
     expect(output, equals(expectedColors));
+  });
+
+  test('HSVColor.lerp identical a,b', () {
+    expect(HSVColor.lerp(null, null, 0), null);
+    const HSVColor color = HSVColor.fromAHSV(1.0, 0.0, 1.0, 1.0);
+    expect(identical(HSVColor.lerp(color, color, 0.5), color), true);
   });
 
   test('HSVColor lerps hue correctly.', () {
@@ -316,6 +321,12 @@ void main() {
     expect(output, equals(expectedColors));
   });
 
+  test('HSLColor.lerp identical a,b', () {
+    expect(HSLColor.lerp(null, null, 0), null);
+    const HSLColor color = HSLColor.fromAHSL(1.0, 0.0, 0.5, 0.5);
+    expect(identical(HSLColor.lerp(color, color, 0.5), color), true);
+  });
+
   test('HSLColor lerps hue correctly.', () {
     final List<Color> output = <Color>[];
     const HSLColor startColor = HSLColor.fromAHSL(1.0, 0.0, 0.5, 0.5);
@@ -427,6 +438,37 @@ void main() {
     expect(greens1.value, 0xFF027223);
   });
 
+  test('ColorSwatch.lerp', () {
+    const ColorSwatch<int> swatchA = ColorSwatch<int>(0x00000000, <int, Color>{1: Color(0x00000000)});
+    const ColorSwatch<int> swatchB = ColorSwatch<int>(0xFFFFFFFF, <int, Color>{1: Color(0xFFFFFFFF)});
+    expect(
+      ColorSwatch.lerp(swatchA, swatchB, 0.0),
+      const ColorSwatch<int>(0x00000000, <int, Color>{1: Color(0x00000000)}),
+    );
+    expect(
+      ColorSwatch.lerp(swatchA, swatchB, 0.5),
+      const ColorSwatch<int>(0x7F7F7F7F, <int, Color>{1: Color(0x7F7F7F7F)}),
+    );
+    expect(
+      ColorSwatch.lerp(swatchA, swatchB, 1.0),
+      const ColorSwatch<int>(0xFFFFFFFF, <int, Color>{1: Color(0xFFFFFFFF)}),
+    );
+    expect(
+      ColorSwatch.lerp(swatchA, swatchB, -0.1),
+      const ColorSwatch<int>(0x00000000, <int, Color>{1: Color(0x00000000)}),
+    );
+    expect(
+      ColorSwatch.lerp(swatchA, swatchB, 1.1),
+      const ColorSwatch<int>(0xFFFFFFFF, <int, Color>{1: Color(0xFFFFFFFF)}),
+    );
+  });
+
+  test('ColorSwatch.lerp identical a,b', () {
+    expect(ColorSwatch.lerp<Object?>(null, null, 0), null);
+    const ColorSwatch<int> color = ColorSwatch<int>(0x00000000, <int, Color>{1: Color(0x00000000)});
+    expect(identical(ColorSwatch.lerp(color, color, 0.5), color), true);
+  });
+
   test('ColorDiagnosticsProperty includes valueProperties in JSON', () {
     ColorProperty property = ColorProperty('foo', const Color.fromARGB(10, 20, 30, 40));
     final Map<String, Object> valueProperties = property.toJsonMap(const DiagnosticsSerializationDelegate())['valueProperties']! as Map<String, Object>;
@@ -448,12 +490,11 @@ void main() {
     };
     const MaterialColor first = MaterialColor(0, sampleMap);
     const MaterialColor second = MaterialColor(0, sampleMap);
-    const MaterialColor third = MaterialColor(
-        0, <int, MaterialColor>{
-          0: Colors.lightBlue,
-          1: Colors.deepOrange,
-          2: Colors.blueGrey,
-        });
+    const MaterialColor third = MaterialColor(0, <int, MaterialColor>{
+      0: Colors.lightBlue,
+      1: Colors.deepOrange,
+      2: Colors.blueGrey,
+    });
     expect(first == second, true);
     expect(first == third, true);
   });

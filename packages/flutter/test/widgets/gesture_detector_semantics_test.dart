@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 import 'semantics_tester.dart';
 
@@ -29,8 +29,8 @@ void main() {
     );
 
     expect(semantics, includesNodeWith(
-        actions: <SemanticsAction>[SemanticsAction.scrollUp, SemanticsAction.scrollDown]),
-    );
+      actions: <SemanticsAction>[SemanticsAction.scrollUp, SemanticsAction.scrollDown],
+    ));
 
     final int detectorId = detectorKey.currentContext!.findRenderObject()!.debugSemantics!.id;
     tester.binding.pipelineOwner.semanticsOwner!.performAction(detectorId, SemanticsAction.scrollLeft);
@@ -63,8 +63,8 @@ void main() {
     );
 
     expect(semantics, includesNodeWith(
-        actions: <SemanticsAction>[SemanticsAction.scrollLeft, SemanticsAction.scrollRight]),
-    );
+      actions: <SemanticsAction>[SemanticsAction.scrollLeft, SemanticsAction.scrollRight],
+    ));
 
     final int detectorId = detectorKey.currentContext!.findRenderObject()!.debugSemantics!.id;
     tester.binding.pipelineOwner.semanticsOwner!.performAction(detectorId, SemanticsAction.scrollUp);
@@ -117,7 +117,7 @@ void main() {
 
     final Set<String> logs = <String>{};
     final GlobalKey<RawGestureDetectorState> detectorKey = GlobalKey();
-    final VoidCallback performLayout = () {
+    void performLayout() {
       detectorKey.currentState!.replaceGestureRecognizers(<Type, GestureRecognizerFactory>{
         TapGestureRecognizer: GestureRecognizerFactoryWithHandlers<TapGestureRecognizer>(
           () => TapGestureRecognizer(),
@@ -126,7 +126,7 @@ void main() {
           },
         ),
       });
-    };
+    }
 
     bool hasLayoutPerformer = false;
     late VoidCallback introduceLayoutPerformer;
@@ -188,8 +188,8 @@ void main() {
       );
 
       expect(semantics, includesNodeWith(
-        actions: <SemanticsAction>[SemanticsAction.longPress, SemanticsAction.tap]),
-      );
+        actions: <SemanticsAction>[SemanticsAction.longPress, SemanticsAction.tap],
+      ));
 
       await tester.pumpWidget(
         Center(
@@ -202,8 +202,8 @@ void main() {
       );
 
       expect(semantics, includesNodeWith(
-        actions: <SemanticsAction>[SemanticsAction.tap]),
-      );
+        actions: <SemanticsAction>[SemanticsAction.tap],
+      ));
 
       semantics.dispose();
     });
@@ -224,8 +224,8 @@ void main() {
       );
 
       expect(semantics, includesNodeWith(
-        actions: <SemanticsAction>[SemanticsAction.tap]),
-      );
+        actions: <SemanticsAction>[SemanticsAction.tap],
+      ));
 
       await tester.pumpWidget(
         Center(
@@ -237,8 +237,8 @@ void main() {
       );
 
       expect(semantics, includesNodeWith(
-        actions: <SemanticsAction>[SemanticsAction.longPress, SemanticsAction.tap]),
-      );
+        actions: <SemanticsAction>[SemanticsAction.longPress, SemanticsAction.tap],
+      ));
 
       semantics.dispose();
     });
@@ -259,8 +259,8 @@ void main() {
       );
 
       expect(semantics, includesNodeWith(
-        actions: <SemanticsAction>[SemanticsAction.tap]),
-      );
+        actions: <SemanticsAction>[SemanticsAction.tap],
+      ));
 
       await tester.pumpWidget(
         Center(
@@ -273,8 +273,8 @@ void main() {
       );
 
       expect(semantics, includesNodeWith(
-        actions: <SemanticsAction>[SemanticsAction.longPress]),
-      );
+        actions: <SemanticsAction>[SemanticsAction.longPress],
+      ));
 
       semantics.dispose();
     });
@@ -287,7 +287,6 @@ void main() {
         Center(
           child: RawGestureDetector(
             key: detectorKey,
-            gestures: const <Type, GestureRecognizerFactory>{},
             semantics: _TestSemanticsGestureDelegate(
               onTap: () { logs.add('tap'); },
               onLongPress: () { logs.add('longPress'); },
@@ -516,8 +515,12 @@ void main() {
         );
 
         expect(semantics, includesNodeWith(
-          actions: <SemanticsAction>[SemanticsAction.scrollLeft, SemanticsAction.scrollRight,
-            SemanticsAction.scrollDown, SemanticsAction.scrollUp],
+          actions: <SemanticsAction>[
+            SemanticsAction.scrollLeft,
+            SemanticsAction.scrollRight,
+            SemanticsAction.scrollDown,
+            SemanticsAction.scrollUp,
+          ],
         ));
 
         semantics.dispose();
@@ -675,8 +678,8 @@ void main() {
       );
 
       expect(semantics, includesNodeWith(
-        actions: <SemanticsAction>[SemanticsAction.longPress]),
-      );
+        actions: <SemanticsAction>[SemanticsAction.longPress],
+      ));
 
       await tester.pumpWidget(
         Center(
@@ -688,8 +691,8 @@ void main() {
       );
 
       expect(semantics, includesNodeWith(
-        actions: <SemanticsAction>[SemanticsAction.tap]),
-      );
+        actions: <SemanticsAction>[SemanticsAction.tap],
+      ));
 
       semantics.dispose();
     });
@@ -698,9 +701,8 @@ void main() {
 
 class _TestLayoutPerformer extends SingleChildRenderObjectWidget {
   const _TestLayoutPerformer({
-    Key? key,
     required this.performLayout,
-  }) : super(key: key);
+  });
 
   final VoidCallback performLayout;
 
@@ -723,8 +725,7 @@ class _RenderTestLayoutPerformer extends RenderBox {
   @override
   void performLayout() {
     size = const Size(1, 1);
-    if (_performLayout != null)
-      _performLayout();
+    _performLayout();
   }
 }
 
@@ -732,8 +733,9 @@ Map<Type, GestureRecognizerFactory> _buildGestureMap<T extends GestureRecognizer
   GestureRecognizerFactoryConstructor<T>? constructor,
   GestureRecognizerFactoryInitializer<T>? initializer,
 ) {
-  if (constructor == null)
+  if (constructor == null) {
     return <Type, GestureRecognizerFactory>{};
+  }
   return <Type, GestureRecognizerFactory>{
     T: GestureRecognizerFactoryWithHandlers<T>(
       constructor,

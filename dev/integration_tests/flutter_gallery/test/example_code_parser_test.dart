@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'dart:typed_data';
-
 import 'package:flutter/services.dart';
 import 'package:flutter_gallery/gallery/example_code_parser.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -47,13 +45,14 @@ class TestAssetBundle extends AssetBundle {
 
   @override
   Future<String> loadString(String key, { bool cache = true }) async {
-    if (key == 'lib/gallery/example_code.dart')
+    if (key == 'lib/gallery/example_code.dart') {
       return testCodeFile;
+    }
     return '';
   }
 
   @override
-  Future<T> loadStructuredData<T>(String key, Future<T> parser(String value)) async {
+  Future<T> loadStructuredData<T>(String key, Future<T> Function(String value) parser) async {
     return parser(await loadString(key));
   }
 

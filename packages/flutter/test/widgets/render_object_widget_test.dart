@@ -2,11 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
-
-import '../rendering/recording_canvas.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 final BoxDecoration kBoxDecorationA = BoxDecoration(border: nonconst(null));
 final BoxDecoration kBoxDecorationB = BoxDecoration(border: nonconst(null));
@@ -14,9 +12,9 @@ final BoxDecoration kBoxDecorationC = BoxDecoration(border: nonconst(null));
 
 class TestWidget extends StatelessWidget {
   const TestWidget({
-    Key? key,
+    super.key,
     required this.child,
-  }) : super(key: key);
+  });
 
   final Widget child;
 
@@ -25,16 +23,13 @@ class TestWidget extends StatelessWidget {
 }
 
 class TestOrientedBox extends SingleChildRenderObjectWidget {
-  const TestOrientedBox({ Key? key, Widget? child }) : super(key: key, child: child);
+  const TestOrientedBox({ super.key, super.child });
 
   Decoration _getDecoration(BuildContext context) {
-    final Orientation orientation = MediaQuery.of(context).orientation;
-    switch (orientation) {
-      case Orientation.landscape:
-        return const BoxDecoration(color: Color(0xFF00FF00));
-      case Orientation.portrait:
-        return const BoxDecoration(color: Color(0xFF0000FF));
-    }
+    return switch (MediaQuery.orientationOf(context)) {
+      Orientation.landscape => const BoxDecoration(color: Color(0xFF00FF00)),
+      Orientation.portrait  => const BoxDecoration(color: Color(0xFF0000FF)),
+    };
   }
 
   @override
@@ -47,7 +42,7 @@ class TestOrientedBox extends SingleChildRenderObjectWidget {
 }
 
 class TestNonVisitingWidget extends SingleChildRenderObjectWidget {
-  const TestNonVisitingWidget({ Key? key, required Widget child }) : super(key: key, child: child);
+  const TestNonVisitingWidget({ super.key, required Widget super.child });
 
   @override
   RenderObject createRenderObject(BuildContext context) => TestNonVisitingRenderObject();
@@ -128,7 +123,7 @@ void main() {
     await tester.pumpWidget(DecoratedBox(
       decoration: kBoxDecorationA,
       child: DecoratedBox(
-        decoration: kBoxDecorationB
+        decoration: kBoxDecorationB,
       ),
     ));
 
@@ -138,7 +133,7 @@ void main() {
       decoration: kBoxDecorationA,
       child: TestWidget(
         child: DecoratedBox(
-          decoration: kBoxDecorationB
+          decoration: kBoxDecorationB,
         ),
       ),
     ));
@@ -148,14 +143,14 @@ void main() {
     await tester.pumpWidget(DecoratedBox(
       decoration: kBoxDecorationA,
       child: DecoratedBox(
-        decoration: kBoxDecorationB
+        decoration: kBoxDecorationB,
       ),
     ));
 
     checkFullTree();
 
     await tester.pumpWidget(DecoratedBox(
-      decoration: kBoxDecorationA
+      decoration: kBoxDecorationA,
     ));
 
     childBareTree();
@@ -165,7 +160,7 @@ void main() {
       child: TestWidget(
         child: TestWidget(
           child: DecoratedBox(
-            decoration: kBoxDecorationB
+            decoration: kBoxDecorationB,
           ),
         ),
       ),
@@ -174,7 +169,7 @@ void main() {
     checkFullTree();
 
     await tester.pumpWidget(DecoratedBox(
-      decoration: kBoxDecorationA
+      decoration: kBoxDecorationA,
     ));
 
     childBareTree();
@@ -187,7 +182,7 @@ void main() {
       child: DecoratedBox(
         decoration: kBoxDecorationB,
         child: DecoratedBox(
-          decoration: kBoxDecorationC
+          decoration: kBoxDecorationC,
         ),
       ),
     ));
@@ -205,7 +200,7 @@ void main() {
     expect(grandChild.child, isNull);
 
     await tester.pumpWidget(DecoratedBox(
-      decoration: kBoxDecorationA
+      decoration: kBoxDecorationA,
     ));
 
     element =

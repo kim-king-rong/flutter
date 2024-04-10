@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'package:flutter/scheduler.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/scheduler.dart';
 
 import 'framework.dart';
 import 'ticker_provider.dart';
@@ -24,7 +24,7 @@ abstract class ScrollContext {
   /// This context is typically different that the context of the scrollable
   /// widget itself. For example, [Scrollable] uses a context outside the
   /// [Viewport] but inside the widgets created by
-  /// [ScrollBehavior.buildViewportChrome].
+  /// [ScrollBehavior.buildOverscrollIndicator] and [ScrollBehavior.buildScrollbar].
   BuildContext? get notificationContext;
 
   /// The [BuildContext] that should be used when searching for a [PageStorage].
@@ -41,6 +41,10 @@ abstract class ScrollContext {
 
   /// The direction in which the widget scrolls.
   AxisDirection get axisDirection;
+
+  /// The [FlutterView.devicePixelRatio] of the view that the [Scrollable] this
+  /// [ScrollContext] is associated with is drawn into.
+  double get devicePixelRatio;
 
   /// Whether the contents of the widget should ignore [PointerEvent] inputs.
   ///

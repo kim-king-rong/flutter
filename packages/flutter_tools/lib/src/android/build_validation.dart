@@ -20,12 +20,12 @@ void validateBuild(AndroidBuildInfo androidBuildInfo) {
   }
   if (buildInfo.mode.isPrecompiled && androidBuildInfo.targetArchs.contains(AndroidArch.x86)) {
     throwToolExit(
-      'Cannot build ${androidBuildInfo.buildInfo.mode.name} mode for x86 ABI.\n'
+      'Cannot build ${androidBuildInfo.buildInfo.mode.cliName} mode for x86 ABI.\n'
       'For more information see $kSupportedAbis .'
     );
   }
   if (buildInfo.buildNumber != null) {
-    final int result = int.tryParse(buildInfo.buildNumber);
+    final int? result = int.tryParse(buildInfo.buildNumber!);
     if (result == null) {
       throwToolExit(
         'buildNumber: ${buildInfo.buildNumber} was not a valid integer value.\n'

@@ -4,7 +4,6 @@
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/widgets.dart';
 
 import 'material_localizations.dart';
 import 'theme_data.dart';
@@ -18,6 +17,8 @@ const Duration kThemeAnimationDuration = Duration(milliseconds: 200);
 /// Applies a theme to descendant widgets.
 ///
 /// A theme describes the colors and typographic choices of an application.
+///
+/// {@youtube 560 315 https://www.youtube.com/watch?v=oTvQDJOBXmM}
 ///
 /// Descendant widgets obtain the current theme's [ThemeData] object using
 /// [Theme.of]. When a widget uses [Theme.of], it is automatically rebuilt if
@@ -35,30 +36,14 @@ const Duration kThemeAnimationDuration = Duration(milliseconds: 200);
 ///    the [MaterialApp.theme] argument.
 class Theme extends StatelessWidget {
   /// Applies the given theme [data] to [child].
-  ///
-  /// The [data] and [child] arguments must not be null.
   const Theme({
-    Key? key,
+    super.key,
     required this.data,
-    this.isMaterialAppTheme = false,
     required this.child,
-  }) : assert(child != null),
-       assert(data != null),
-       super(key: key);
+  });
 
   /// Specifies the color and typography values for descendant widgets.
   final ThemeData data;
-
-  /// True if this theme was installed by the [MaterialApp].
-  ///
-  /// When an app uses the [Navigator] to push a route, the route's widgets
-  /// will only inherit from the app's theme, even though the widget that
-  /// triggered the push may inherit from a theme that "shadows" the app's
-  /// theme because it's deeper in the widget tree. Apps can find the shadowing
-  /// theme with `Theme.of(context, shadowThemeOnly: true)` and pass it along
-  /// to the class that creates a route's widgets. Material widgets that push
-  /// routes, like [PopupMenuButton] and [DropdownButton], do this.
-  final bool isMaterialAppTheme;
 
   /// The widget below this widget in the tree.
   ///
@@ -74,7 +59,7 @@ class Theme extends StatelessWidget {
   /// [MaterialLocalizations], the returned data is localized according to the
   /// nearest available [MaterialLocalizations].
   ///
-  /// Defaults to [new ThemeData.fallback] if there is no [Theme] in the given
+  /// Defaults to [ThemeData.fallback] if there is no [Theme] in the given
   /// build context.
   ///
   /// Typical usage is as follows:
@@ -84,7 +69,7 @@ class Theme extends StatelessWidget {
   /// Widget build(BuildContext context) {
   ///   return Text(
   ///     'Example',
-  ///     style: Theme.of(context).textTheme.headline6,
+  ///     style: Theme.of(context).textTheme.titleLarge,
   ///   );
   /// }
   /// ```
@@ -101,14 +86,14 @@ class Theme extends StatelessWidget {
   /// Widget build(BuildContext context) {
   ///   return MaterialApp(
   ///     theme: ThemeData.light(),
-  ///     body: Builder(
+  ///     home: Builder(
   ///       // Create an inner BuildContext so that we can refer to
   ///       // the Theme with Theme.of().
   ///       builder: (BuildContext context) {
   ///         return Center(
   ///           child: Text(
   ///             'Example',
-  ///             style: Theme.of(context).textTheme.headline6,
+  ///             style: Theme.of(context).textTheme.titleLarge,
   ///           ),
   ///         );
   ///       },
@@ -124,6 +109,21 @@ class Theme extends StatelessWidget {
     return ThemeData.localize(theme, theme.typography.geometryThemeFor(category));
   }
 
+  // The inherited themes in widgets library can not infer their values from
+  // Theme in material library. Wraps the child with these inherited themes to
+  // overrides their values directly.
+  Widget _wrapsWidgetThemes(BuildContext context, Widget child) {
+    final DefaultSelectionStyle selectionStyle = DefaultSelectionStyle.of(context);
+    return IconTheme(
+      data: data.iconTheme,
+      child: DefaultSelectionStyle(
+        selectionColor: data.textSelectionTheme.selectionColor ?? selectionStyle.selectionColor,
+        cursorColor: data.textSelectionTheme.cursorColor ?? selectionStyle.cursorColor,
+        child: child,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return _InheritedTheme(
@@ -135,10 +135,7 @@ class Theme extends StatelessWidget {
         data: MaterialBasedCupertinoThemeData(
           materialTheme: data,
         ),
-        child: IconTheme(
-          data: data.iconTheme,
-          child: child,
-        ),
+        child: _wrapsWidgetThemes(context, child),
       ),
     );
   }
@@ -152,11 +149,9 @@ class Theme extends StatelessWidget {
 
 class _InheritedTheme extends InheritedTheme {
   const _InheritedTheme({
-    Key? key,
     required this.theme,
-    required Widget child,
-  }) : assert(theme != null),
-       super(key: key, child: child);
+    required super.child,
+  });
 
   final Theme theme;
 
@@ -181,7 +176,7 @@ class ThemeDataTween extends Tween<ThemeData> {
   /// The [begin] and [end] properties must be non-null before the tween is
   /// first used, but the arguments can be null if the values are going to be
   /// filled in later.
-  ThemeDataTween({ ThemeData? begin, ThemeData? end }) : super(begin: begin, end: end);
+  ThemeDataTween({ super.begin, super.end });
 
   @override
   ThemeData lerp(double t) => ThemeData.lerp(begin!, end!, t);
@@ -204,25 +199,18 @@ class ThemeDataTween extends Tween<ThemeData> {
 class AnimatedTheme extends ImplicitlyAnimatedWidget {
   /// Creates an animated theme.
   ///
-  /// By default, the theme transition uses a linear curve. The [data] and
-  /// [child] arguments must not be null.
+  /// By default, the theme transition uses a linear curve.
   const AnimatedTheme({
-    Key? key,
+    super.key,
     required this.data,
-    this.isMaterialAppTheme = false,
-    Curve curve = Curves.linear,
-    Duration duration = kThemeAnimationDuration,
-    VoidCallback? onEnd,
+    super.curve,
+    super.duration = kThemeAnimationDuration,
+    super.onEnd,
     required this.child,
-  }) : assert(child != null),
-       assert(data != null),
-       super(key: key, curve: curve, duration: duration, onEnd: onEnd);
+  });
 
   /// Specifies the color and typography values for descendant widgets.
   final ThemeData data;
-
-  /// True if this theme was created by the [MaterialApp]. See [Theme.isMaterialAppTheme].
-  final bool isMaterialAppTheme;
 
   /// The widget below this widget in the tree.
   ///
@@ -230,7 +218,7 @@ class AnimatedTheme extends ImplicitlyAnimatedWidget {
   final Widget child;
 
   @override
-  _AnimatedThemeState createState() => _AnimatedThemeState();
+  AnimatedWidgetBaseState<AnimatedTheme> createState() => _AnimatedThemeState();
 }
 
 class _AnimatedThemeState extends AnimatedWidgetBaseState<AnimatedTheme> {
@@ -238,16 +226,14 @@ class _AnimatedThemeState extends AnimatedWidgetBaseState<AnimatedTheme> {
 
   @override
   void forEachTween(TweenVisitor<dynamic> visitor) {
-    // TODO(ianh): Use constructor tear-offs when it becomes possible, https://github.com/dart-lang/sdk/issues/10659
     _data = visitor(_data, widget.data, (dynamic value) => ThemeDataTween(begin: value as ThemeData))! as ThemeDataTween;
   }
 
   @override
   Widget build(BuildContext context) {
     return Theme(
-      isMaterialAppTheme: widget.isMaterialAppTheme,
+      data: _data!.evaluate(animation),
       child: widget.child,
-      data: _data!.evaluate(animation!),
     );
   }
 

@@ -8,7 +8,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../image_data.dart';
-import '../rendering/mock_canvas.dart';
 
 /// Integration tests testing both [CupertinoPageScaffold] and [CupertinoTabScaffold].
 void main() {
@@ -25,7 +24,7 @@ void main() {
       ),
     );
 
-    expect(tester.getTopLeft(find.byType(Center)), const Offset(0.0, 0.0));
+    expect(tester.getTopLeft(find.byType(Center)), Offset.zero);
   });
 
   testWidgets('Opaque bar pushes contents down', (WidgetTester tester) async {
@@ -188,7 +187,6 @@ void main() {
         textDirection: TextDirection.ltr,
         child: MediaQuery(
           data: MediaQueryData(
-            padding: EdgeInsets.zero,
             viewPadding: EdgeInsets.only(bottom: 20),
             viewInsets: EdgeInsets.only(bottom: 300),
           ),
@@ -228,7 +226,7 @@ void main() {
                   ),
                   child: page1Center,
                 )
-                : Stack();
+                : const Stack();
           },
         ),
       ),
@@ -271,7 +269,7 @@ void main() {
                       ],
                     ),
                   )
-                  : Stack();
+                  : const Stack();
             },
           ),
         ),
@@ -282,7 +280,7 @@ void main() {
     expect(tester.getTopLeft(find.byWidget(content)).dy, 20.0 + 44.0);
 
     // Overscroll to the bottom.
-    await tester.drag(find.byWidget(content), const Offset(0.0, -400.0));
+    await tester.drag(find.byWidget(content), const Offset(0.0, -400.0), warnIfMissed: false); // can't be hit (it's empty) but we're aiming for the list really so it doesn't matter
     // Let it bounce back.
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
@@ -365,7 +363,7 @@ void main() {
     // Navigate in tab 2.
     await tester.tap(find.text('Next'));
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pump(const Duration(milliseconds: 600));
 
     expect(find.text('Page 2 of tab 2'), isOnstage);
     expect(find.text('Page 1 of tab 1', skipOffstage: false), isOffstage);
@@ -380,7 +378,7 @@ void main() {
     // Navigate in tab 1.
     await tester.tap(find.text('Next'));
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pump(const Duration(milliseconds: 600));
 
     expect(find.text('Page 2 of tab 1'), isOnstage);
     expect(find.text('Page 2 of tab 2', skipOffstage: false), isOffstage);
@@ -394,7 +392,7 @@ void main() {
     // Pop in tab 2
     await tester.tap(find.text('Back'));
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pump(const Duration(milliseconds: 600));
 
     expect(find.text('Page 1 of tab 2'), isOnstage);
     expect(find.text('Page 2 of tab 1', skipOffstage: false), isOffstage);
@@ -420,8 +418,8 @@ void main() {
     await tester.pumpWidget(
       const CupertinoApp(
         home: CupertinoPageScaffold(
-          child: Center(),
           backgroundColor: Color(0xFF010203),
+          child: Center(),
         ),
       ),
     );
@@ -490,38 +488,46 @@ void main() {
       return CupertinoApp(
         home: MediaQuery(
           data: MediaQueryData(
-            padding: EdgeInsets.zero,
             viewPadding: const EdgeInsets.only(bottom: 20),
             viewInsets: EdgeInsets.only(bottom: showKeyboard ? 300 : 20),
           ),
           child: CupertinoPageScaffold(
-            resizeToAvoidBottomInset: true,
             navigationBar: showNavigationBar ? const CupertinoNavigationBar(
               middle: Text('Title'),
             ) : null,
-            child: const Center(
-              child: CupertinoTextField(),
+            child: Builder(
+              builder: (BuildContext context) => Center(
+                child: CupertinoTextField(
+                  placeholder: MediaQuery.viewInsetsOf(context).toString(),
+                ),
+              ),
             ),
           ),
         ),
       );
     }
 
+    // CupertinoPageScaffold should consume the viewInsets in all cases
+    final String expectedViewInsets = EdgeInsets.zero.toString();
+
     // When there is a nav bar and no keyboard.
     await tester.pumpWidget(buildFrame(true, false));
     final Offset positionNoInsetWithNavBar = tester.getTopLeft(find.byType(CupertinoTextField));
+    expect((find.byType(CupertinoTextField).evaluate().first.widget as CupertinoTextField).placeholder, expectedViewInsets);
 
     // When there is a nav bar and keyboard, the CupertinoTextField moves up.
     await tester.pumpWidget(buildFrame(true, true));
     await tester.pumpAndSettle();
     final Offset positionWithInsetWithNavBar = tester.getTopLeft(find.byType(CupertinoTextField));
     expect(positionWithInsetWithNavBar.dy, lessThan(positionNoInsetWithNavBar.dy));
+    expect((find.byType(CupertinoTextField).evaluate().first.widget as CupertinoTextField).placeholder, expectedViewInsets);
 
     // When there is no nav bar and no keyboard, the CupertinoTextField is still
     // centered.
     await tester.pumpWidget(buildFrame(false, false));
     final Offset positionNoInsetNoNavBar = tester.getTopLeft(find.byType(CupertinoTextField));
     expect(positionNoInsetNoNavBar, equals(positionNoInsetWithNavBar));
+    expect((find.byType(CupertinoTextField).evaluate().first.widget as CupertinoTextField).placeholder, expectedViewInsets);
 
     // When there is a keyboard but no nav bar, the CupertinoTextField also
     // moves up to the same position as when there is a keyboard and nav bar.
@@ -530,14 +536,16 @@ void main() {
     final Offset positionWithInsetNoNavBar = tester.getTopLeft(find.byType(CupertinoTextField));
     expect(positionWithInsetNoNavBar.dy, lessThan(positionNoInsetNoNavBar.dy));
     expect(positionWithInsetNoNavBar, equals(positionWithInsetWithNavBar));
+    expect((find.byType(CupertinoTextField).evaluate().first.widget as CupertinoTextField).placeholder, expectedViewInsets);
   });
 
   testWidgets('textScaleFactor is set to 1.0', (WidgetTester tester) async {
     await tester.pumpWidget(
       CupertinoApp(
         home: Builder(builder: (BuildContext context) {
-          return MediaQuery(
-            data: MediaQuery.of(context).copyWith(textScaleFactor: 99),
+          return MediaQuery.withClampedTextScaling(
+            minScaleFactor: 99,
+            maxScaleFactor: 99,
             child: const CupertinoPageScaffold(
               navigationBar: CupertinoNavigationBar(
                 middle: Text('middle'),
@@ -557,6 +565,6 @@ void main() {
     expect(richTextList.length, greaterThan(0));
     expect(richTextList.any((RichText text) => text.textScaleFactor != 1), isFalse);
 
-    expect(tester.widget<RichText>(find.descendant(of: find.text('content'), matching: find.byType(RichText))).textScaleFactor, 99);
+    expect(tester.widget<RichText>(find.descendant(of: find.text('content'), matching: find.byType(RichText))).textScaler, const TextScaler.linear(99.0));
   });
 }

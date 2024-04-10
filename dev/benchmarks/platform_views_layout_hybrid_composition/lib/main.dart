@@ -5,7 +5,6 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart' show timeDilation;
 import 'package:flutter_driver/driver_extension.dart';
 
 import 'android_platform_view.dart';
@@ -19,13 +18,11 @@ void main() {
 
 class PlatformViewApp extends StatefulWidget {
   const PlatformViewApp({
-    Key key
-  }) : super(key: key);
+    super.key
+  });
 
   @override
   PlatformViewAppState createState() => PlatformViewAppState();
-
-  static PlatformViewAppState of(BuildContext context) => context.findAncestorStateOfType<PlatformViewAppState>();
 }
 
 class PlatformViewAppState extends State<PlatformViewApp> {
@@ -37,16 +34,10 @@ class PlatformViewAppState extends State<PlatformViewApp> {
       home: const PlatformViewLayout(),
     );
   }
-
-  void toggleAnimationSpeed() {
-    setState(() {
-      timeDilation = (timeDilation != 1.0) ? 1.0 : 5.0;
-    });
-  }
 }
 
 class PlatformViewLayout extends StatelessWidget {
-  const PlatformViewLayout({ Key key }) : super(key: key);
+  const PlatformViewLayout({ super.key });
 
   @override
   Widget build(BuildContext context) {
@@ -61,8 +52,8 @@ class PlatformViewLayout extends StatelessWidget {
             child: Material(
               elevation: (index % 5 + 1).toDouble(),
               color: Colors.white,
-              child: Stack(
-                children: const <Widget> [
+              child: const Stack(
+                children: <Widget> [
                   DummyPlatformView(),
                   RotationContainer(),
                 ],
@@ -76,12 +67,12 @@ class PlatformViewLayout extends StatelessWidget {
 }
 
 class DummyPlatformView extends StatelessWidget {
-  const DummyPlatformView({Key key}) : super(key: key);
+  const DummyPlatformView({super.key});
 
   @override
   Widget build(BuildContext context) {
     const String viewType = 'benchmarks/platform_views_layout_hybrid_composition/DummyPlatformView';
-    Widget nativeView;
+    late Widget nativeView;
     if (Platform.isIOS) {
       nativeView = const UiKitView(
         viewType: viewType,
@@ -103,15 +94,15 @@ class DummyPlatformView extends StatelessWidget {
 }
 
 class RotationContainer extends StatefulWidget {
-  const RotationContainer({Key key}) : super(key: key);
+  const RotationContainer({super.key});
 
   @override
-  _RotationContainerState createState() => _RotationContainerState();
+  State<RotationContainer> createState() => _RotationContainerState();
 }
 
 class _RotationContainerState extends State<RotationContainer>
   with SingleTickerProviderStateMixin {
-  AnimationController _rotationController;
+  late AnimationController _rotationController;
 
   @override
   void initState() {
@@ -123,6 +114,13 @@ class _RotationContainerState extends State<RotationContainer>
     );
     _rotationController.repeat();
   }
+
+  @override
+  void dispose() {
+    _rotationController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return RotationTransition(

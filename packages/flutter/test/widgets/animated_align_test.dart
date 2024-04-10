@@ -2,9 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   testWidgets('AnimatedAlign.debugFillProperties', (WidgetTester tester) async {
@@ -60,7 +59,7 @@ void main() {
 
   testWidgets('AnimatedAlign widthFactor', (WidgetTester tester) async {
     await tester.pumpWidget(
-      Directionality(
+      const Directionality(
         textDirection: TextDirection.ltr,
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -69,8 +68,8 @@ void main() {
               alignment: Alignment.center,
               curve: Curves.ease,
               widthFactor: 0.5,
-              duration: const Duration(milliseconds: 200),
-              child: Container(
+              duration: Duration(milliseconds: 200),
+              child: SizedBox(
                 height: 100.0,
                 width: 100.0,
               ),
@@ -85,7 +84,7 @@ void main() {
 
   testWidgets('AnimatedAlign heightFactor', (WidgetTester tester) async {
     await tester.pumpWidget(
-      Directionality(
+      const Directionality(
         textDirection: TextDirection.ltr,
         child: Column(
           children: <Widget>[
@@ -93,8 +92,8 @@ void main() {
               alignment: Alignment.center,
               curve: Curves.ease,
               heightFactor: 0.5,
-              duration: const Duration(milliseconds: 200),
-              child: Container(
+              duration: Duration(milliseconds: 200),
+              child: SizedBox(
                 height: 100.0,
                 width: 100.0,
               ),
@@ -109,7 +108,7 @@ void main() {
 
   testWidgets('AnimatedAlign null height factor', (WidgetTester tester) async {
     await tester.pumpWidget(
-      Directionality(
+      const Directionality(
         textDirection: TextDirection.ltr,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -117,8 +116,8 @@ void main() {
             AnimatedAlign(
               alignment: Alignment.center,
               curve: Curves.ease,
-              duration: const Duration(milliseconds: 200),
-              child: Container(
+              duration: Duration(milliseconds: 200),
+              child: SizedBox(
                 height: 100.0,
                 width: 100.0,
               ),
@@ -127,13 +126,13 @@ void main() {
         ),
       ),
     );
-    final RenderBox box = tester.renderObject<RenderBox>(find.byType(Container));
+    final RenderBox box = tester.renderObject<RenderBox>(find.byType(SizedBox));
     expect(box.size, equals(const Size(100.0, 100)));
   });
 
   testWidgets('AnimatedAlign null widthFactor', (WidgetTester tester) async {
     await tester.pumpWidget(
-      Directionality(
+      const Directionality(
         textDirection: TextDirection.ltr,
         child: SizedBox.shrink(
           child: Row(
@@ -143,8 +142,8 @@ void main() {
                AnimatedAlign(
                 alignment: Alignment.center,
                 curve: Curves.ease,
-                duration: const Duration(milliseconds: 200),
-                child: Container(
+                duration: Duration(milliseconds: 200),
+                child: SizedBox(
                   height: 100.0,
                   width: 100.0,
                 ),
@@ -154,7 +153,7 @@ void main() {
         ),
       ),
     );
-    final RenderBox box = tester.renderObject<RenderBox>(find.byType(Container));
+    final RenderBox box = tester.renderObject<RenderBox>(find.byType(SizedBox).last);
     expect(box.size, equals(const Size(100.0, 100)));
   });
 }

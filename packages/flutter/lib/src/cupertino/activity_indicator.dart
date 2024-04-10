@@ -20,20 +20,24 @@ const Color _kActiveTickColor = CupertinoDynamicColor.withBrightness(
 ///
 /// {@youtube 560 315 https://www.youtube.com/watch?v=AENVH-ZqKDQ}
 ///
+/// {@tool dartpad}
+/// This example shows how [CupertinoActivityIndicator] can be customized.
+///
+/// ** See code in examples/api/lib/cupertino/activity_indicator/cupertino_activity_indicator.0.dart **
+/// {@end-tool}
+///
 /// See also:
 ///
-///  * <https://developer.apple.com/ios/human-interface-guidelines/controls/progress-indicators/#activity-indicators>
+///  * <https://developer.apple.com/design/human-interface-guidelines/progress-indicators/>
 class CupertinoActivityIndicator extends StatefulWidget {
   /// Creates an iOS-style activity indicator that spins clockwise.
   const CupertinoActivityIndicator({
-    Key? key,
+    super.key,
+    this.color,
     this.animating = true,
     this.radius = _kDefaultIndicatorRadius,
-  })  : assert(animating != null),
-        assert(radius != null),
-        assert(radius > 0.0),
-        progress = 1.0,
-        super(key: key);
+  })  : assert(radius > 0.0),
+        progress = 1.0;
 
   /// Creates a non-animated iOS-style activity indicator that displays
   /// a partial count of ticks based on the value of [progress].
@@ -42,16 +46,19 @@ class CupertinoActivityIndicator extends StatefulWidget {
   /// will be shown) and 1.0 (all ticks will be shown) inclusive. Defaults
   /// to 1.0.
   const CupertinoActivityIndicator.partiallyRevealed({
-    Key? key,
+    super.key,
+    this.color,
     this.radius = _kDefaultIndicatorRadius,
     this.progress = 1.0,
-  })  : assert(radius != null),
-        assert(radius > 0.0),
-        assert(progress != null),
+  })  : assert(radius > 0.0),
         assert(progress >= 0.0),
         assert(progress <= 1.0),
-        animating = false,
-        super(key: key);
+        animating = false;
+
+  /// Color of the activity indicator.
+  ///
+  /// Defaults to color extracted from native iOS.
+  final Color? color;
 
   /// Whether the activity indicator is running its animation.
   ///
@@ -60,7 +67,7 @@ class CupertinoActivityIndicator extends StatefulWidget {
 
   /// Radius of the spinner widget.
   ///
-  /// Defaults to 10px. Must be positive and cannot be null.
+  /// Defaults to 10 pixels. Must be positive.
   final double radius;
 
   /// Determines the percentage of spinner ticks that will be shown. Typical usage would
@@ -68,12 +75,11 @@ class CupertinoActivityIndicator extends StatefulWidget {
   /// during pull-to-refresh when the drag-down action shows one tick at a time as
   /// the user continues to drag down.
   ///
-  /// Defaults to 1.0. Must be between 0.0 and 1.0 inclusive, and cannot be null.
+  /// Defaults to one. Must be between zero and one, inclusive.
   final double progress;
 
   @override
-  _CupertinoActivityIndicatorState createState() =>
-      _CupertinoActivityIndicatorState();
+  State<CupertinoActivityIndicator> createState() => _CupertinoActivityIndicatorState();
 }
 
 class _CupertinoActivityIndicatorState extends State<CupertinoActivityIndicator>
@@ -97,10 +103,11 @@ class _CupertinoActivityIndicatorState extends State<CupertinoActivityIndicator>
   void didUpdateWidget(CupertinoActivityIndicator oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.animating != oldWidget.animating) {
-      if (widget.animating)
+      if (widget.animating) {
         _controller.repeat();
-      else
+      } else {
         _controller.stop();
+      }
     }
   }
 
@@ -118,8 +125,7 @@ class _CupertinoActivityIndicatorState extends State<CupertinoActivityIndicator>
       child: CustomPaint(
         painter: _CupertinoActivityIndicatorPainter(
           position: _controller,
-          activeColor:
-              CupertinoDynamicColor.resolve(_kActiveTickColor, context),
+          activeColor: widget.color ?? CupertinoDynamicColor.resolve(_kActiveTickColor, context),
           radius: widget.radius,
           progress: widget.progress,
         ),

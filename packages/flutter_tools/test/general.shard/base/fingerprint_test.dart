@@ -5,14 +5,16 @@
 import 'dart:convert' show json;
 
 import 'package:file/memory.dart';
+import 'package:file_testing/file_testing.dart';
 import 'package:flutter_tools/src/base/fingerprint.dart';
 import 'package:flutter_tools/src/base/logger.dart';
 import 'package:flutter_tools/src/base/utils.dart';
 
 import '../../src/common.dart';
+
 void main() {
   group('Fingerprinter', () {
-    MemoryFileSystem fileSystem;
+    late MemoryFileSystem fileSystem;
 
     setUp(() {
       fileSystem = MemoryFileSystem.test();
@@ -56,34 +58,38 @@ void main() {
       );
       expect(fingerprinter.doesFingerprintMatch(), isFalse);
     });
+
     testWithoutContext('fingerprint does match if identical', () {
       fileSystem.file('a.dart').createSync();
       fileSystem.file('b.dart').createSync();
 
+      const String fingerprintPath = 'path/to/out.fingerprint';
       final Fingerprinter fingerprinter = Fingerprinter(
-        fingerprintPath: 'out.fingerprint',
+        fingerprintPath: fingerprintPath,
         paths: <String>['a.dart', 'b.dart'],
         fileSystem: fileSystem,
         logger: BufferLogger.test(),
       );
       fingerprinter.writeFingerprint();
       expect(fingerprinter.doesFingerprintMatch(), isTrue);
+      expect(fileSystem.file(fingerprintPath), exists);
     });
 
     testWithoutContext('fails to write fingerprint if inputs are missing', () {
+      const String fingerprintPath = 'path/to/out.fingerprint';
       final Fingerprinter fingerprinter = Fingerprinter(
-        fingerprintPath: 'out.fingerprint',
+        fingerprintPath: fingerprintPath,
         paths: <String>['a.dart'],
         fileSystem: fileSystem,
         logger: BufferLogger.test(),
       );
       fingerprinter.writeFingerprint();
-      expect(fileSystem.file('out.fingerprint').existsSync(), isFalse);
+      expect(fileSystem.file(fingerprintPath), isNot(exists));
     });
 
   group('Fingerprint', () {
     group('fromBuildInputs', () {
-      MemoryFileSystem fileSystem;
+      late MemoryFileSystem fileSystem;
 
       setUp(() {
         fileSystem = MemoryFileSystem.test();
@@ -102,10 +108,11 @@ void main() {
         fileSystem.file('b.dart').writeAsStringSync('This is b');
         final Fingerprint fingerprint = Fingerprint.fromBuildInputs(const <String>['a.dart', 'b.dart'], fileSystem);
 
-        final Map<String, dynamic> jsonObject = castStringKeyedMap(json.decode(fingerprint.toJson()));
-        expect(jsonObject['files'], hasLength(2));
-        expect(jsonObject['files']['a.dart'], '8a21a15fad560b799f6731d436c1b698');
-        expect(jsonObject['files']['b.dart'], '6f144e08b58cd0925328610fad7ac07c');
+        final Map<String, dynamic>? jsonObject = castStringKeyedMap(json.decode(fingerprint.toJson()));
+        final Map<String, dynamic> files = jsonObject!['files'] as Map<String, dynamic>;
+        expect(files, hasLength(2));
+        expect(files['a.dart'], '8a21a15fad560b799f6731d436c1b698');
+        expect(files['b.dart'], '6f144e08b58cd0925328610fad7ac07c');
       });
     });
 
@@ -122,11 +129,12 @@ void main() {
           },
         });
         final Fingerprint fingerprint = Fingerprint.fromJson(jsonString);
-        final Map<String, dynamic> content = castStringKeyedMap(json.decode(fingerprint.toJson()));
+        final Map<String, dynamic>? content = castStringKeyedMap(json.decode(fingerprint.toJson()));
+        final Map<String, dynamic> files = content!['files'] as Map<String, dynamic>;
         expect(content, hasLength(1));
-        expect(content['files'], hasLength(2));
-        expect(content['files']['a.dart'], '8a21a15fad560b799f6731d436c1b698');
-        expect(content['files']['b.dart'], '6f144e08b58cd0925328610fad7ac07c');
+        expect(files, hasLength(2));
+        expect(files['a.dart'], '8a21a15fad560b799f6731d436c1b698');
+        expect(files['b.dart'], '6f144e08b58cd0925328610fad7ac07c');
       });
       testWithoutContext('treats missing properties and files entries as if empty', () {
         final String jsonString = json.encode(<String, dynamic>{});

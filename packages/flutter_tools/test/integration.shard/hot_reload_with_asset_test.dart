@@ -12,9 +12,9 @@ import 'test_driver.dart';
 import 'test_utils.dart';
 
 void main() {
-  Directory tempDir;
+  late Directory tempDir;
   final HotReloadWithAssetProject project = HotReloadWithAssetProject();
-  FlutterRunTestDriver flutter;
+  late FlutterRunTestDriver flutter;
 
   setUp(() async {
     tempDir = createResolvedTempDirectorySync('hot_reload_test.');
@@ -23,7 +23,7 @@ void main() {
   });
 
   tearDown(() async {
-    await flutter?.stop();
+    await flutter.stop();
     tryToDelete(tempDir);
   });
 
@@ -45,7 +45,7 @@ void main() {
         onSecondLoad.complete();
       }
     });
-    flutter.stdout.listen(print);
+    flutter.stdout.listen(printOnFailure);
     await flutter.run();
     await onFirstLoad.future;
 
@@ -72,7 +72,7 @@ void main() {
         onSecondLoad.complete();
       }
     });
-    flutter.stdout.listen(print);
+    flutter.stdout.listen(printOnFailure);
     await flutter.run();
     await onFirstLoad.future;
 

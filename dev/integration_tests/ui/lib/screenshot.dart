@@ -12,10 +12,12 @@ import 'package:flutter_driver/driver_extension.dart';
 void main() {
   enableFlutterDriverExtension();
 
-  runApp(Toggler());
+  runApp(const Toggler());
 }
 
 class Toggler extends StatefulWidget {
+  const Toggler({super.key});
+
   @override
   State<Toggler> createState() => TogglerState();
 }

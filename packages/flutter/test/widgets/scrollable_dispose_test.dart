@@ -2,10 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter/widgets.dart';
 
 import 'test_widgets.dart';
 
@@ -32,6 +30,7 @@ void main() {
     // Regression test for https://github.com/flutter/flutter/issues/27707.
 
     final ScrollController controller = ScrollController();
+    addTearDown(controller.dispose);
     final Key outerContainer = GlobalKey();
 
     await tester.pumpWidget(
@@ -43,7 +42,7 @@ void main() {
             width: 400.0,
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
-              child: Container(
+              child: SizedBox(
                 width: 500.0,
                 child: ListView.builder(
                   controller: controller,
@@ -75,7 +74,7 @@ void main() {
     final double currentOffset = controller.offset;
 
     // Start a hold activity by putting one pointer down.
-    await tester.startGesture(tester.getTopLeft(find.byKey(outerContainer)) + const Offset(50.0, 50.0));
+    final TestGesture gesture = await tester.startGesture(tester.getTopLeft(find.byKey(outerContainer)) + const Offset(50.0, 50.0));
     await tester.pumpAndSettle(); // This shouldn't change the scroll offset because of the down event above.
     expect(controller.offset, currentOffset);
 
@@ -87,5 +86,9 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(controller.hasClients, isFalse);
+
+    // Finish gesture to release resources.
+    await gesture.up();
+    await tester.pumpAndSettle();
   }, variant: const TargetPlatformVariant(<TargetPlatform>{ TargetPlatform.iOS,  TargetPlatform.macOS }));
 }

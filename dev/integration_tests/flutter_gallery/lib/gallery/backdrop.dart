@@ -4,7 +4,6 @@
 
 import 'dart:math' as math;
 
-import 'package:flutter/rendering.dart';
 import 'package:flutter/material.dart';
 
 const double _kFrontHeadingHeight = 32.0; // front layer beveled rectangle
@@ -12,7 +11,7 @@ const double _kFrontClosedHeight = 92.0; // front layer height when closed
 const double _kBackAppBarHeight = 56.0; // back layer (options) appbar height
 
 // The size of the front layer heading's left and right beveled corners.
-final Animatable<BorderRadius> _kFrontHeadingBevelRadius = BorderRadiusTween(
+final Animatable<BorderRadius?> _kFrontHeadingBevelRadius = BorderRadiusTween(
   begin: const BorderRadius.only(
     topLeft: Radius.circular(12.0),
     topRight: Radius.circular(12.0),
@@ -26,10 +25,9 @@ final Animatable<BorderRadius> _kFrontHeadingBevelRadius = BorderRadiusTween(
 class _TappableWhileStatusIs extends StatefulWidget {
   const _TappableWhileStatusIs(
     this.status, {
-    Key? key,
     this.controller,
     this.child,
-  }) : super(key: key);
+  });
 
   final AnimationController? controller;
   final AnimationStatus status;
@@ -84,12 +82,11 @@ class _TappableWhileStatusIsState extends State<_TappableWhileStatusIs> {
 
 class _CrossFadeTransition extends AnimatedWidget {
   const _CrossFadeTransition({
-    Key? key,
     this.alignment = Alignment.center,
     required Animation<double> progress,
     this.child0,
     this.child1,
-  }) : super(key: key, listenable: progress);
+  }) : super(listenable: progress);
 
   final AlignmentGeometry alignment;
   final Widget? child0;
@@ -135,11 +132,10 @@ class _CrossFadeTransition extends AnimatedWidget {
 
 class _BackAppBar extends StatelessWidget {
   const _BackAppBar({
-    Key? key,
     this.leading = const SizedBox(width: 56.0),
     required this.title,
     this.trailing,
-  }) : super(key: key);
+  });
 
   final Widget leading;
   final Widget title;
@@ -151,7 +147,7 @@ class _BackAppBar extends StatelessWidget {
     return IconTheme.merge(
       data: theme.primaryIconTheme,
       child: DefaultTextStyle(
-        style: theme.primaryTextTheme.headline6!,
+        style: theme.primaryTextTheme.titleLarge!,
         child: SizedBox(
           height: _kBackAppBarHeight,
           child: Row(
@@ -180,6 +176,7 @@ class _BackAppBar extends StatelessWidget {
 
 class Backdrop extends StatefulWidget {
   const Backdrop({
+    super.key,
     this.frontAction,
     this.frontTitle,
     this.frontHeading,
@@ -196,7 +193,7 @@ class Backdrop extends StatefulWidget {
   final Widget? backLayer;
 
   @override
-  _BackdropState createState() => _BackdropState();
+  State<Backdrop> createState() => _BackdropState();
 }
 
 class _BackdropState extends State<Backdrop> with SingleTickerProviderStateMixin {
@@ -244,16 +241,18 @@ class _BackdropState extends State<Backdrop> with SingleTickerProviderStateMixin
   }
 
   void _handleDragEnd(DragEndDetails details) {
-    if (_controller!.isAnimating || _controller!.status == AnimationStatus.completed)
+    if (_controller!.isAnimating || _controller!.status == AnimationStatus.completed) {
       return;
+    }
 
     final double flingVelocity = details.velocity.pixelsPerSecond.dy / _backdropHeight;
-    if (flingVelocity < 0.0)
+    if (flingVelocity < 0.0) {
       _controller!.fling(velocity: math.max(2.0, -flingVelocity));
-    else if (flingVelocity > 0.0)
+    } else if (flingVelocity > 0.0) {
       _controller!.fling(velocity: math.min(-2.0, -flingVelocity));
-    else
+    } else {
       _controller!.fling(velocity: _controller!.value < 0.5 ? -2.0 : 2.0);
+    }
   }
 
   void _toggleFrontLayer() {
@@ -296,9 +295,9 @@ class _BackdropState extends State<Backdrop> with SingleTickerProviderStateMixin
                 AnimationStatus.dismissed,
                 controller: _controller,
                 child: Visibility(
-                  child: widget.backLayer!,
                   visible: _controller!.status != AnimationStatus.completed,
                   maintainState: true,
+                  child: widget.backLayer!,
                 ),
               ),
             ),
@@ -315,7 +314,7 @@ class _BackdropState extends State<Backdrop> with SingleTickerProviderStateMixin
                 color: Theme.of(context).canvasColor,
                 clipper: ShapeBorderClipper(
                   shape: BeveledRectangleBorder(
-                    borderRadius: _kFrontHeadingBevelRadius.transform(_controller!.value),
+                    borderRadius: _kFrontHeadingBevelRadius.transform(_controller!.value)!,
                   ),
                 ),
                 clipBehavior: Clip.antiAlias,

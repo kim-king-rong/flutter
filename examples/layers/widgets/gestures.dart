@@ -30,8 +30,9 @@ class _GesturePainter extends CustomPainter {
     final Offset center = size.center(Offset.zero) * zoom + offset;
     final double radius = size.width / 2.0 * zoom;
     final Gradient gradient = RadialGradient(
-      colors: forward ? <Color>[swatch.shade50, swatch.shade900]
-                      : <Color>[swatch.shade900, swatch.shade50]
+      colors: forward
+        ? <Color>[swatch.shade50, swatch.shade900]
+        : <Color>[swatch.shade900, swatch.shade50],
     );
     final Paint paint = Paint()
       ..shader = gradient.createShader(Rect.fromCircle(
@@ -55,6 +56,8 @@ class _GesturePainter extends CustomPainter {
 }
 
 class GestureDemo extends StatefulWidget {
+  const GestureDemo({super.key});
+
   @override
   GestureDemoState createState() => GestureDemoState();
 }
@@ -127,8 +130,9 @@ class GestureDemoState extends State<GestureDemo> {
   void _handleColorChange() {
     setState(() {
       _swatchIndex += 1;
-      if (_swatchIndex == kSwatches.length)
+      if (_swatchIndex == kSwatches.length) {
         _swatchIndex = 0;
+      }
       _swatch = kSwatches[_swatchIndex];
     });
   }
@@ -170,6 +174,7 @@ class GestureDemoState extends State<GestureDemo> {
             child: Container(
               padding: const EdgeInsets.all(4.0),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
                   Row(
                     children: <Widget>[
@@ -208,7 +213,6 @@ class GestureDemoState extends State<GestureDemo> {
                     ],
                   ),
                 ],
-                crossAxisAlignment: CrossAxisAlignment.start,
               ),
             ),
           ),
@@ -223,7 +227,7 @@ void main() {
     theme: ThemeData.dark(),
     home: Scaffold(
       appBar: AppBar(title: const Text('Gestures Demo')),
-      body: GestureDemo(),
+      body: const GestureDemo(),
     ),
   ));
 }

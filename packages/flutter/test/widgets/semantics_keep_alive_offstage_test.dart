@@ -4,7 +4,6 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'semantics_tester.dart';
@@ -19,6 +18,7 @@ void main() {
     const double bottomScrollOffset = 3000.0;
 
     final ScrollController controller = ScrollController(initialScrollOffset: bottomScrollOffset);
+    addTearDown(controller.dispose);
 
     await tester.pumpWidget(_buildTestWidget(
       extraPadding: false,
@@ -93,7 +93,7 @@ Widget _buildTestWidget({
           Expanded(
             child: Container(),
           ),
-          Container(
+          SizedBox(
             height: 500.0,
             child: ListView(
               controller: controller,
@@ -120,10 +120,10 @@ Widget _buildTestWidget({
 
 class ProblemWidget extends StatefulWidget {
   const ProblemWidget({
-    Key? key,
+    super.key,
     required this.extraPadding,
     required this.text,
-  }) : super(key: key);
+  });
 
   final bool extraPadding;
   final String text;

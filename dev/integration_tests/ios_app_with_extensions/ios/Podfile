@@ -1,5 +1,5 @@
 # Uncomment this line to define a global platform for your project
-# platform :ios, '9.0'
+# platform :ios, '12.0'
 
 # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
@@ -39,7 +39,7 @@ target 'watch Extension' do
   use_frameworks!
   use_modular_headers!
 
-  pod 'EFQRCode/watchOS', '5.1.6'
+  pod 'EFQRCode', '6.0'
 end
 
 post_install do |installer|

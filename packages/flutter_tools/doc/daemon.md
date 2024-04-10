@@ -10,7 +10,7 @@ flutter daemon
 
 It runs a persistent, JSON-RPC based server to communicate with devices. IDEs and other tools can start the flutter tool in this mode and get device addition and removal notifications, as well as being able to programmatically start and stop apps on those devices.
 
-A set of `flutter daemon` commands/events are also exposed via `flutter run --machine` and `flutter attach --machine` which allow IDEs and tools to launch and attach to flutter applications and interact to send commands like Hot Reload. The command and events that are available in these modes are documented at the bottom of this document.
+A set of `flutter daemon` commands/events are also exposed via `flutter run --machine` and `flutter attach --machine` which allow IDEs and tools to launch and attach to Flutter applications and interact to send commands like Hot Reload. The command and events that are available in these modes are documented at the bottom of this document.
 
 ## Protocol
 
@@ -62,14 +62,22 @@ The `shutdown()` command will terminate the flutter daemon. It is not necessary 
 
 #### daemon.getSupportedPlatforms
 
-The `getSupportedPlatforms()` command will enumerate all platforms supported by the project located at the provided `projectRoot`. It returns a Map with the key 'platforms' containing a List of strings which describe the set of all possibly supported platforms. Possible values include:
-   - android
-   - ios
-   - linux #experimental
-   - macos #experimental
-   - windows #experimental
-   - fuchsia #experimental
-   - web #experimental
+The `getSupportedPlatforms()` command will enumerate all platforms supported
+by the project located at the provided `projectRoot`. It returns a Map with
+the key 'platformTypes' containing a Map of platform types to a Map with the
+following entries:
+
+- isSupported (bool) - whether or not the platform type is supported
+- reasons (List<Map<String, Object>>, only included if isSupported == false) - a list of reasons why the platform is not supported
+
+The schema for each element in `reasons` is:
+
+- reasonText (String) - a description of why the platform is not supported
+- fixText (String) - human readable instructions of how to fix this reason
+- fixCode (String) - stringified version of the `_ReasonCode` enum. To be used
+by daemon clients who intend to auto-fix.
+
+The possible platform types are the `PlatformType` enumeration in the lib/src/device.dart library.
 
 #### Events
 
@@ -136,11 +144,11 @@ The `stop()` command takes one parameter, `appId`. It returns a `bool` to indica
 
 #### app.start
 
-This is sent when an app is starting. The `params` field will be a map with the fields `appId`, `directory`, `deviceId`, and `launchMode`.
+This is sent when an app is starting. The `params` field will be a map with the fields `appId`, `directory`, `deviceId`, `launchMode` (`run`/`attach`) and `mode` (`debug`, `profile`, `release`, `jit_release`).
 
 #### app.debugPort
 
-This is sent when an observatory port is available for a started app. The `params` field will be a map with the fields `appId`, `port`, and `wsUri`. Clients should prefer using the `wsUri` field in preference to synthesizing a URI using the `port` field. An optional field, `baseUri`, is populated if a path prefix is required for setting breakpoints on the target device.
+This is sent when a VM service port is available for a started app. The `params` field will be a map with the fields `appId`, `port`, and `wsUri`. Clients should prefer using the `wsUri` field in preference to synthesizing a URI using the `port` field. An optional field, `baseUri`, is populated if a path prefix is required for setting breakpoints on the target device.
 
 #### app.started
 
@@ -187,7 +195,7 @@ Return a list of all connected devices. The `params` field will be a List; each 
 `category` is a string description of the kind of workflow the device supports. The current categories are "mobile", "web" and "desktop", or null if none.
 
 `platformType` is a string description of the platform sub-folder the device
-supports. The current catgetories are "android", "ios", "linux", "macos",
+supports. The current categories are "android", "ios", "linux", "macos",
 "fuchsia", "windows", and "web". These are kept in sync with the response from `daemon.getSupportedPlatforms`.
 
 `ephemeral` is a boolean which indicates where the device needs to be manually connected to a development machine. For example, a physical Android device is ephemeral, but the "web" device (that is always present) is not.
@@ -233,6 +241,7 @@ Return a list of all available emulators. The `params` field will be a List; eac
 The `launch()` command allows launching an emulator/simulator by its `id`.
 
 - `emulatorId`: the id of an emulator as returned by `getEmulators`.
+- `coldBoot`: an optional boolean flag which indicates if the emulator should be cold booted. Only supported for android emulators, silently ignored if emulator type is not android.
 
 #### emulator.create
 
@@ -295,6 +304,7 @@ See the [source](https://github.com/flutter/flutter/blob/master/packages/flutter
 
 ## Changelog
 
+- 0.6.1: Added `coldBoot` option to `emulator.launch` command.
 - 0.6.0: Added `debounce` option to `app.restart` command.
 - 0.5.3: Added `emulatorId` field to device.
 - 0.5.2: Added `platformType` and `category` fields to emulator.

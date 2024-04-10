@@ -3,14 +3,13 @@
 // found in the LICENSE file.
 
 import 'dart:async';
-import 'dart:typed_data';
-import 'dart:ui' as ui show Image, ColorFilter;
+import 'dart:ui' as ui show ColorFilter, Image;
 
+import 'package:fake_async/fake_async.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
-import 'package:fake_async/fake_async.dart';
+import 'package:flutter_test/flutter_test.dart';
 
-import '../flutter_test_alternative.dart';
 import '../image_data.dart';
 import '../painting/mocks_for_image_cache.dart';
 import '../rendering/rendering_tester.dart';
@@ -35,9 +34,9 @@ class SynchronousTestImageProvider extends ImageProvider<int> {
   }
 
   @override
-  ImageStreamCompleter load(int key, DecoderCallback decode) {
+  ImageStreamCompleter loadImage(int key, ImageDecoderCallback decode) {
     return OneFrameImageStreamCompleter(
-      SynchronousFuture<ImageInfo>(TestImageInfo(key, image: image, scale: 1.0))
+      SynchronousFuture<ImageInfo>(TestImageInfo(key, image: image)),
     );
   }
 }
@@ -53,7 +52,7 @@ class SynchronousErrorTestImageProvider extends ImageProvider<int> {
   }
 
   @override
-  ImageStreamCompleter load(int key, DecoderCallback decode) {
+  ImageStreamCompleter loadImage(int key, ImageDecoderCallback decode) {
     throw throwable;
   }
 }
@@ -69,9 +68,9 @@ class AsyncTestImageProvider extends ImageProvider<int> {
   }
 
   @override
-  ImageStreamCompleter load(int key, DecoderCallback decode) {
+  ImageStreamCompleter loadImage(int key, ImageDecoderCallback decode) {
     return OneFrameImageStreamCompleter(
-      Future<ImageInfo>.value(TestImageInfo(key, image: image))
+      Future<ImageInfo>.value(TestImageInfo(key, image: image)),
     );
   }
 }
@@ -89,7 +88,7 @@ class DelayedImageProvider extends ImageProvider<DelayedImageProvider> {
   }
 
   @override
-  ImageStreamCompleter load(DelayedImageProvider key, DecoderCallback decode) {
+  ImageStreamCompleter loadImage(DelayedImageProvider key, ImageDecoderCallback decode) {
     return OneFrameImageStreamCompleter(_completer.future);
   }
 
@@ -112,7 +111,7 @@ class MultiFrameImageProvider extends ImageProvider<MultiFrameImageProvider> {
   }
 
   @override
-  ImageStreamCompleter load(MultiFrameImageProvider key, DecoderCallback decode) {
+  ImageStreamCompleter loadImage(MultiFrameImageProvider key, ImageDecoderCallback decode) {
     return completer;
   }
 
@@ -127,7 +126,7 @@ class MultiImageCompleter extends ImageStreamCompleter {
 }
 
 void main() {
-  TestRenderingFlutterBinding(); // initializes the imageCache
+  TestRenderingFlutterBinding.ensureInitialized();
 
   test('Decoration.lerp()', () {
     const BoxDecoration a = BoxDecoration(color: Color(0xFFFFFFFF));
@@ -141,6 +140,12 @@ void main() {
 
     c = Decoration.lerp(a, b, 1.0)! as BoxDecoration;
     expect(c.color, equals(b.color));
+  });
+
+  test('Decoration.lerp identical a,b', () {
+    expect(Decoration.lerp(null, null, 0), null);
+    const Decoration decoration = BoxDecoration();
+    expect(identical(Decoration.lerp(decoration, decoration, 0.5), decoration), true);
   });
 
   test('Decoration equality', () {
@@ -241,7 +246,6 @@ void main() {
   test('BoxDecoration backgroundImage clip', () async {
     final ui.Image image = await createTestImage(width: 100, height: 100);
     void testDecoration({ BoxShape shape = BoxShape.rectangle, BorderRadius? borderRadius, required bool expectClip }) {
-      assert(shape != null);
       FakeAsync().run((FakeAsync async) async {
         final DelayedImageProvider imageProvider = DelayedImageProvider(image);
         final DecorationImage backgroundImage = DecorationImage(image: imageProvider);
@@ -254,7 +258,7 @@ void main() {
 
         final TestCanvas canvas = TestCanvas();
         const ImageConfiguration imageConfiguration = ImageConfiguration(
-            size: Size(100.0, 100.0)
+          size: Size(100.0, 100.0),
         );
         bool onChangedCalled = false;
         final BoxPainter boxPainter = boxDecoration.createBoxPainter(() {
@@ -302,6 +306,10 @@ void main() {
       alignment: Alignment.bottomLeft,
       centerSlice: const Rect.fromLTWH(10.0, 20.0, 30.0, 40.0),
       repeat: ImageRepeat.repeatY,
+      opacity: 0.5,
+      filterQuality: FilterQuality.high,
+      invertColors: true,
+      isAntiAlias: true,
     );
 
     final BoxDecoration boxDecoration = BoxDecoration(image: backgroundImage);
@@ -316,19 +324,43 @@ void main() {
     expect(call.positionalArguments[1], const Rect.fromLTRB(10.0, 20.0, 40.0, 60.0));
     expect(call.positionalArguments[2], const Rect.fromLTRB(0.0, 0.0, 100.0, 100.0));
     expect(call.positionalArguments[3], isA<Paint>());
-    expect(call.positionalArguments[3].isAntiAlias, false);
-    expect(call.positionalArguments[3].colorFilter, colorFilter);
-    expect(call.positionalArguments[3].filterQuality, FilterQuality.low);
+    final Paint paint = call.positionalArguments[3] as Paint;
+    expect(paint.colorFilter, colorFilter);
+    expect(paint.color, const Color(0x7F000000)); // 0.5 opacity
+    expect(paint.filterQuality, FilterQuality.high);
+    expect(paint.isAntiAlias, true);
+    expect(paint.invertColors, isTrue);
+  });
+
+  test('DecorationImage.toString', () async {
+    expect(
+      DecorationImage(
+        image: SynchronousTestImageProvider(
+          await createTestImage(width: 100, height: 100),
+        ),
+        opacity: 0.99,
+        scale: 2.01,
+      ).toString(),
+      'DecorationImage(SynchronousTestImageProvider(), Alignment.center, scale 2.0, opacity 1.0, FilterQuality.low)',
+    );
   });
 
   test('DecorationImage with null textDirection configuration should throw Error', () async {
+    const ColorFilter colorFilter = ui.ColorFilter.mode(Color(0xFF00FF00), BlendMode.src);
     final ui.Image image = await createTestImage(width: 100, height: 100);
     final DecorationImage backgroundImage = DecorationImage(
       image: SynchronousTestImageProvider(image),
+      colorFilter: colorFilter,
+      fit: BoxFit.contain,
+      centerSlice: const Rect.fromLTWH(10.0, 20.0, 30.0, 40.0),
+      repeat: ImageRepeat.repeatY,
       matchTextDirection: true,
+      scale: 0.5,
+      opacity: 0.5,
+      invertColors: true,
+      isAntiAlias: true,
     );
-    final BoxDecoration boxDecoration = BoxDecoration(
-        image: backgroundImage);
+    final BoxDecoration boxDecoration = BoxDecoration(image: backgroundImage);
     final BoxPainter boxPainter = boxDecoration.createBoxPainter(() {
       assert(false);
     });
@@ -336,7 +368,8 @@ void main() {
     late FlutterError error;
     try {
       boxPainter.paint(canvas, Offset.zero, const ImageConfiguration(
-          size: Size(100.0, 100.0), textDirection: null));
+        size: Size(100.0, 100.0),
+      ));
     } on FlutterError catch (e) {
       error = e;
     }
@@ -352,11 +385,15 @@ void main() {
       '   direction provided in the ImageConfiguration object to match.\n'
       '   The DecorationImage was:\n'
       '     DecorationImage(SynchronousTestImageProvider(),\n'
-      '     Alignment.center, match text direction, scale: 1.0)\n'
+      '     ColorFilter.mode(Color(0xff00ff00), BlendMode.src),\n'
+      '     BoxFit.contain, Alignment.center, centerSlice:\n'
+      '     Rect.fromLTRB(10.0, 20.0, 40.0, 60.0), ImageRepeat.repeatY,\n'
+      '     match text direction, scale 0.5, opacity 0.5,\n'
+      '     FilterQuality.low, invert colors, use anti-aliasing)\n'
       '   The ImageConfiguration was:\n'
-      '     ImageConfiguration(size: Size(100.0, 100.0))\n'
+      '     ImageConfiguration(size: Size(100.0, 100.0))\n',
     );
-  }, skip: kIsWeb);
+  }, skip: kIsWeb); // https://github.com/flutter/flutter/issues/87364
 
   test('DecorationImage - error listener', () async {
     late String exception;
@@ -364,7 +401,7 @@ void main() {
       image: const SynchronousErrorTestImageProvider('threw'),
       onError: (dynamic error, StackTrace? stackTrace) {
         exception = error as String;
-      }
+      },
     );
 
     backgroundImage.createPainter(() { }).paint(
@@ -383,31 +420,31 @@ void main() {
     // (Use a ShapeDecoration and ShapeBorder if you want to lerp the shapes...)
     expect(
       BoxDecoration.lerp(
-        const BoxDecoration(shape: BoxShape.rectangle),
+        const BoxDecoration(),
         const BoxDecoration(shape: BoxShape.circle),
         -1.0,
       ),
-      const BoxDecoration(shape: BoxShape.rectangle),
+      const BoxDecoration(),
     );
     expect(
       BoxDecoration.lerp(
-        const BoxDecoration(shape: BoxShape.rectangle),
+        const BoxDecoration(),
         const BoxDecoration(shape: BoxShape.circle),
         0.0,
       ),
-      const BoxDecoration(shape: BoxShape.rectangle),
+      const BoxDecoration(),
     );
     expect(
       BoxDecoration.lerp(
-        const BoxDecoration(shape: BoxShape.rectangle),
+        const BoxDecoration(),
         const BoxDecoration(shape: BoxShape.circle),
         0.25,
       ),
-      const BoxDecoration(shape: BoxShape.rectangle),
+      const BoxDecoration(),
     );
     expect(
       BoxDecoration.lerp(
-        const BoxDecoration(shape: BoxShape.rectangle),
+        const BoxDecoration(),
         const BoxDecoration(shape: BoxShape.circle),
         0.75,
       ),
@@ -415,7 +452,7 @@ void main() {
     );
     expect(
       BoxDecoration.lerp(
-        const BoxDecoration(shape: BoxShape.rectangle),
+        const BoxDecoration(),
         const BoxDecoration(shape: BoxShape.circle),
         1.0,
       ),
@@ -423,7 +460,7 @@ void main() {
     );
     expect(
       BoxDecoration.lerp(
-        const BoxDecoration(shape: BoxShape.rectangle),
+        const BoxDecoration(),
         const BoxDecoration(shape: BoxShape.circle),
         2.0,
       ),
@@ -504,8 +541,6 @@ void main() {
         scale: scale,
         alignment: Alignment.bottomRight,
         fit: BoxFit.none,
-        repeat: ImageRepeat.noRepeat,
-        flipHorizontally: false,
       );
 
       const Size imageSize = Size(100.0, 100.0);
@@ -548,8 +583,6 @@ void main() {
         scale: scale,
         alignment: Alignment.bottomRight,
         fit: BoxFit.scaleDown,
-        repeat: ImageRepeat.noRepeat,
-        flipHorizontally: false,
       );
 
       const Size imageSize = Size(100.0, 100.0);
@@ -591,8 +624,6 @@ void main() {
       scale: 2.0,
       alignment: Alignment.bottomRight,
       fit: BoxFit.scaleDown,
-      repeat: ImageRepeat.noRepeat,
-      flipHorizontally: false,
     );
 
     const Size imageSize = Size(100.0, 100.0);
@@ -641,10 +672,7 @@ void main() {
         rect: outputRect,
         image: image,
         scale: 3.0,
-        alignment: Alignment.center,
         fit: boxFit,
-        repeat: ImageRepeat.noRepeat,
-        flipHorizontally: false,
       );
 
       final Invocation call = canvas.invocations.firstWhere((Invocation call) => call.memberName == #drawImageRect);
@@ -653,8 +681,89 @@ void main() {
       expect(call.positionalArguments, hasLength(4));
 
       // Image should be positioned in the center of the container
+      // ignore: avoid_dynamic_calls
       expect(call.positionalArguments[2].center, outputRect.center);
     }
+  });
+
+  test('paintImage with repeatX and fitHeight', () async {
+    final TestCanvas canvas = TestCanvas();
+
+    // Paint a square image into an output rect that is twice as wide as it is
+    // tall.  Two copies of the image should be painted, one next to the other.
+    const Rect outputRect = Rect.fromLTWH(30.0, 30.0, 400.0, 200.0);
+    final ui.Image image = await createTestImage(width: 100, height: 100);
+
+    paintImage(
+      canvas: canvas,
+      rect: outputRect,
+      image: image,
+      alignment: Alignment.topLeft,
+      fit: BoxFit.fitHeight,
+      repeat: ImageRepeat.repeatX,
+    );
+
+    const Size imageSize = Size(100.0, 100.0);
+
+    final List<Invocation> calls = canvas.invocations.where((Invocation call) => call.memberName == #drawImageRect).toList();
+    final Set<Rect> tileRects = <Rect>{};
+
+    expect(calls, hasLength(2));
+    for (final Invocation call in calls) {
+      expect(call.isMethod, isTrue);
+      expect(call.positionalArguments, hasLength(4));
+
+      expect(call.positionalArguments[0], isA<ui.Image>());
+
+      // sourceRect should contain all pixels of the source image
+      expect(call.positionalArguments[1], Offset.zero & imageSize);
+
+      tileRects.add(call.positionalArguments[2] as Rect);
+
+      expect(call.positionalArguments[3], isA<Paint>());
+    }
+
+    expect(tileRects, <Rect>{const Rect.fromLTWH(30.0, 30.0, 200.0, 200.0), const Rect.fromLTWH(230.0, 30.0, 200.0, 200.0)});
+  });
+
+  test('paintImage with repeatY and fitWidth', () async {
+    final TestCanvas canvas = TestCanvas();
+
+    // Paint a square image into an output rect that is twice as tall as it is
+    // wide.  Two copies of the image should be painted, one above the other.
+    const Rect outputRect = Rect.fromLTWH(30.0, 30.0, 200.0, 400.0);
+    final ui.Image image = await createTestImage(width: 100, height: 100);
+
+    paintImage(
+      canvas: canvas,
+      rect: outputRect,
+      image: image,
+      alignment: Alignment.topLeft,
+      fit: BoxFit.fitWidth,
+      repeat: ImageRepeat.repeatY,
+    );
+
+    const Size imageSize = Size(100.0, 100.0);
+
+    final List<Invocation> calls = canvas.invocations.where((Invocation call) => call.memberName == #drawImageRect).toList();
+    final Set<Rect> tileRects = <Rect>{};
+
+    expect(calls, hasLength(2));
+    for (final Invocation call in calls) {
+      expect(call.isMethod, isTrue);
+      expect(call.positionalArguments, hasLength(4));
+
+      expect(call.positionalArguments[0], isA<ui.Image>());
+
+      // sourceRect should contain all pixels of the source image
+      expect(call.positionalArguments[1], Offset.zero & imageSize);
+
+      tileRects.add(call.positionalArguments[2] as Rect);
+
+      expect(call.positionalArguments[3], isA<Paint>());
+    }
+
+    expect(tileRects, <Rect>{const Rect.fromLTWH(30.0, 30.0, 200.0, 200.0), const Rect.fromLTWH(30.0, 230.0, 200.0, 200.0)});
   });
 
   test('DecorationImage scale test', () async {
@@ -662,7 +771,7 @@ void main() {
     final DecorationImage backgroundImage = DecorationImage(
       image: SynchronousTestImageProvider(image),
       scale: 4,
-      alignment: Alignment.topLeft
+      alignment: Alignment.topLeft,
     );
 
     final BoxDecoration boxDecoration = BoxDecoration(image: backgroundImage);
@@ -673,6 +782,7 @@ void main() {
     final Invocation call = canvas.invocations.firstWhere((Invocation call) => call.memberName == #drawImageRect);
     // The image should scale down to Size(25.0, 25.0) from Size(100.0, 100.0)
     // considering DecorationImage scale to be 4.0 and Image scale to be 1.0.
+    // ignore: avoid_dynamic_calls
     expect(call.positionalArguments[2].size, const Size(25.0, 25.0));
     expect(call.positionalArguments[2], const Rect.fromLTRB(0.0, 0.0, 25.0, 25.0));
   });
@@ -683,11 +793,11 @@ void main() {
     final ImageStream stream = provider.resolve(ImageConfiguration.empty);
 
     final Completer<ImageInfo> infoCompleter = Completer<ImageInfo>();
-    void _listener(ImageInfo image, bool syncCall) {
+    void listener(ImageInfo image, bool syncCall) {
       assert(!infoCompleter.isCompleted);
       infoCompleter.complete(image);
     }
-    stream.addListener(ImageStreamListener(_listener));
+    stream.addListener(ImageStreamListener(listener));
 
     final ImageInfo info = await infoCompleter.future;
     final int baselineRefCount = info.image.debugGetOpenHandleStackTraces()!.length;
@@ -701,5 +811,18 @@ void main() {
     expect(info.image.debugGetOpenHandleStackTraces()!.length, baselineRefCount);
 
     info.dispose();
-  }, skip: kIsWeb);
+  }, skip: kIsWeb); // https://github.com/flutter/flutter/issues/87442
+
+  test('BoxShadow.copyWith', () {
+    expect(const BoxShadow(), isNot(const BoxShadow(color: Color(0xFF112233))));
+    expect(const BoxShadow().copyWith(color: const Color(0xFF112233)), const BoxShadow(color: Color(0xFF112233)));
+    expect(const BoxShadow(), isNot(const BoxShadow(offset: Offset(1.0, 2.0))));
+    expect(const BoxShadow().copyWith(offset: const Offset(1.0, 2.0)), const BoxShadow(offset: Offset(1.0, 2.0)));
+    expect(const BoxShadow(), isNot(const BoxShadow(blurRadius: 123.0)));
+    expect(const BoxShadow().copyWith(blurRadius: 123.0), const BoxShadow(blurRadius: 123.0));
+    expect(const BoxShadow(), isNot(const BoxShadow(spreadRadius: 123.0)));
+    expect(const BoxShadow().copyWith(spreadRadius: 123.0), const BoxShadow(spreadRadius: 123.0));
+    expect(const BoxShadow(), isNot(const BoxShadow(blurStyle: BlurStyle.outer)));
+    expect(const BoxShadow().copyWith(blurStyle: BlurStyle.outer), const BoxShadow(blurStyle: BlurStyle.outer));
+  });
 }

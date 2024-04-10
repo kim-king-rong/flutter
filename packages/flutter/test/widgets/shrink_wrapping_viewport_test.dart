@@ -2,11 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter_test/flutter_test.dart';
 
-import '../rendering/rendering_tester.dart';
+import '../rendering/rendering_tester.dart' show TestClipPaintingContext;
 
 void main() {
   testWidgets('ShrinkWrappingViewport respects clipBehavior', (WidgetTester tester) async {
@@ -17,11 +17,14 @@ void main() {
       );
     }
 
+    final ViewportOffset offset1 = ViewportOffset.zero();
+    addTearDown(offset1.dispose);
+
     await tester.pumpWidget(build(
-        ShrinkWrappingViewport(
-          offset: ViewportOffset.zero(),
-          slivers: <Widget>[SliverToBoxAdapter(child: Container(height: 2000.0))],
-        )
+      ShrinkWrappingViewport(
+        offset: offset1,
+        slivers: <Widget>[SliverToBoxAdapter(child: Container(height: 2000.0))],
+      ),
     ));
 
     // 1st, check that the render object has received the default clip behavior.
@@ -33,13 +36,16 @@ void main() {
     renderObject.paint(context, Offset.zero);
     expect(context.clipBehavior, equals(Clip.hardEdge));
 
+    final ViewportOffset offset2 = ViewportOffset.zero();
+    addTearDown(offset2.dispose);
+
     // 3rd, pump a new widget to check that the render object can update its clip behavior.
     await tester.pumpWidget(build(
-        ShrinkWrappingViewport(
-          offset: ViewportOffset.zero(),
-          slivers: <Widget>[SliverToBoxAdapter(child: Container(height: 2000.0))],
-          clipBehavior: Clip.antiAlias,
-        )
+      ShrinkWrappingViewport(
+        offset: offset2,
+        slivers: <Widget>[SliverToBoxAdapter(child: Container(height: 2000.0))],
+        clipBehavior: Clip.antiAlias,
+      ),
     ));
     expect(renderObject.clipBehavior, equals(Clip.antiAlias));
 

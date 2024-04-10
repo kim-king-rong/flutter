@@ -5,16 +5,16 @@
 import 'package:file/memory.dart';
 import 'package:flutter_tools/src/android/android_device.dart';
 import 'package:flutter_tools/src/android/android_sdk.dart';
-import 'package:flutter_tools/src/application_package.dart';
+import 'package:flutter_tools/src/android/application_package.dart';
 import 'package:flutter_tools/src/base/file_system.dart';
 import 'package:flutter_tools/src/base/logger.dart';
 import 'package:flutter_tools/src/base/platform.dart';
 import 'package:flutter_tools/src/build_info.dart';
 import 'package:flutter_tools/src/device.dart';
-import 'package:mockito/mockito.dart';
+import 'package:test/fake.dart';
 
 import '../../src/common.dart';
-import '../../src/context.dart';
+import '../../src/fake_process_manager.dart';
 
 const FakeCommand kAdbVersionCommand = FakeCommand(
   command: <String>['adb', 'version'],
@@ -40,16 +40,14 @@ const FakeCommand kShaCommand = FakeCommand(
 );
 
 void main() {
-  FileSystem fileSystem;
-  FakeProcessManager processManager;
-  AndroidSdk androidSdk;
+  late FileSystem fileSystem;
+  late FakeProcessManager processManager;
+  late AndroidSdk androidSdk;
 
   setUp(() {
-    processManager = FakeProcessManager.list(<FakeCommand>[]);
+    processManager = FakeProcessManager.empty();
     fileSystem = MemoryFileSystem.test();
-    androidSdk = MockAndroidSdk();
-    when(androidSdk.adbPath).thenReturn('adb');
-    when(androidSdk.licensesAvailable).thenReturn(false);
+    androidSdk = FakeAndroidSdk();
   });
 
   for (final TargetPlatform targetPlatform in <TargetPlatform>[
@@ -58,19 +56,18 @@ void main() {
     TargetPlatform.android_x64,
   ]) {
     testWithoutContext('AndroidDevice.startApp allows release builds on $targetPlatform', () async {
-      final String arch = getNameForAndroidArch(
-        getAndroidArchForName(getNameForTargetPlatform(targetPlatform)));
+      final String arch = getAndroidArchForName(getNameForTargetPlatform(targetPlatform)).archName;
       final AndroidDevice device = AndroidDevice('1234', modelID: 'TestModel',
         fileSystem: fileSystem,
         processManager: processManager,
         logger: BufferLogger.test(),
-        platform: FakePlatform(operatingSystem: 'linux'),
+        platform: FakePlatform(),
         androidSdk: androidSdk,
       );
-      final File apkFile = fileSystem.file('app.apk')..createSync();
+      final File apkFile = fileSystem.file('app-debug.apk')..createSync();
       final AndroidApk apk = AndroidApk(
         id: 'FlutterApp',
-        file: apkFile,
+        applicationPackage: apkFile,
         launchActivity: 'FlutterActivity',
         versionCode: 1,
       );
@@ -90,7 +87,7 @@ void main() {
         command: <String>['adb', '-s', '1234', 'shell', 'pm', 'list', 'packages', 'FlutterApp'],
       ));
       processManager.addCommand(const FakeCommand(
-        command: <String>['adb', '-s', '1234', 'install', '-t', '-r', 'app.apk'],
+        command: <String>['adb', '-s', '1234', 'install', '-t', '-r', 'app-debug.apk'],
       ));
       processManager.addCommand(kShaCommand);
       processManager.addCommand(const FakeCommand(
@@ -102,10 +99,11 @@ void main() {
           'am',
           'start',
           '-a',
-          'android.intent.action.RUN',
+          'android.intent.action.MAIN',
+          '-c',
+          'android.intent.category.LAUNCHER',
           '-f',
           '0x20000000',
-          '--ez', 'enable-background-compilation', 'true',
           '--ez', 'enable-dart-profiling', 'true',
           'FlutterActivity',
         ],
@@ -121,7 +119,7 @@ void main() {
       );
 
       expect(launchResult.started, true);
-      expect(processManager.hasRemainingExpectations, false);
+      expect(processManager, hasNoRemainingExpectations);
     });
   }
 
@@ -130,13 +128,13 @@ void main() {
       fileSystem: fileSystem,
       processManager: processManager,
       logger: BufferLogger.test(),
-      platform: FakePlatform(operatingSystem: 'linux'),
+      platform: FakePlatform(),
       androidSdk: androidSdk,
     );
-    final File apkFile = fileSystem.file('app.apk')..createSync();
+    final File apkFile = fileSystem.file('app-debug.apk')..createSync();
     final AndroidApk apk = AndroidApk(
       id: 'FlutterApp',
-      file: apkFile,
+      applicationPackage: apkFile,
       launchActivity: 'FlutterActivity',
       versionCode: 1,
     );
@@ -160,7 +158,7 @@ void main() {
     );
 
     expect(launchResult.started, false);
-    expect(processManager.hasRemainingExpectations, false);
+    expect(processManager, hasNoRemainingExpectations);
   });
 
   testWithoutContext('AndroidDevice.startApp forwards all supported debugging options', () async {
@@ -168,13 +166,13 @@ void main() {
       fileSystem: fileSystem,
       processManager: processManager,
       logger: BufferLogger.test(),
-      platform: FakePlatform(operatingSystem: 'linux'),
+      platform: FakePlatform(),
       androidSdk: androidSdk,
     );
-    final File apkFile = fileSystem.file('app.apk')..createSync();
+    final File apkFile = fileSystem.file('app-debug.apk')..createSync();
     final AndroidApk apk = AndroidApk(
       id: 'FlutterApp',
-      file: apkFile,
+      applicationPackage: apkFile,
       launchActivity: 'FlutterActivity',
       versionCode: 1,
     );
@@ -191,8 +189,6 @@ void main() {
     processManager.addCommand(const FakeCommand(
       command: <String>['adb', '-s', '1234', 'shell', 'pm', 'list', 'packages', '--user', '10', 'FlutterApp'],
     ));
-    // TODO(jonahwilliams): investigate why this doesn't work.
-    // This doesn't work with the current Android log reader implementation.
     processManager.addCommand(const FakeCommand(
       command: <String>[
         'adb',
@@ -203,9 +199,9 @@ void main() {
         '-r',
         '--user',
         '10',
-        'app.apk'
+        'app-debug.apk',
       ],
-      stdout: '\n\nObservatory listening on http://127.0.0.1:456\n\n',
+      stdout: '\n\nThe Dart VM service is listening on http://127.0.0.1:456\n\n',
     ));
     processManager.addCommand(kShaCommand);
     processManager.addCommand(const FakeCommand(
@@ -231,21 +227,25 @@ void main() {
         'am',
         'start',
         '-a',
-        'android.intent.action.RUN',
+        'android.intent.action.MAIN',
+        '-c',
+        'android.intent.category.LAUNCHER',
         '-f',
         '0x20000000',
         // The DebuggingOptions arguments go here.
-        '--ez', 'enable-background-compilation', 'true',
         '--ez', 'enable-dart-profiling', 'true',
         '--ez', 'enable-software-rendering', 'true',
         '--ez', 'skia-deterministic-rendering', 'true',
         '--ez', 'trace-skia', 'true',
-        '--ez', 'trace-allowlist', 'bar,baz',
+        '--es', 'trace-allowlist', 'bar,baz',
+        '--es', 'trace-skia-allowlist', 'skia.a,skia.b',
         '--ez', 'trace-systrace', 'true',
+        '--es', 'trace-to-file', 'path/to/trace.binpb',
         '--ez', 'endless-trace-buffer', 'true',
         '--ez', 'dump-skp-on-shader-compilation', 'true',
         '--ez', 'cache-sksl', 'true',
         '--ez', 'purge-persistent-cache', 'true',
+        '--ez', 'enable-impeller', 'true',
         '--ez', 'enable-checked-mode', 'true',
         '--ez', 'verify-entry-points', 'true',
         '--ez', 'start-paused', 'true',
@@ -270,23 +270,32 @@ void main() {
         skiaDeterministicRendering: true,
         traceSkia: true,
         traceAllowlist: 'bar,baz',
+        traceSkiaAllowlist: 'skia.a,skia.b',
         traceSystrace: true,
+        traceToFile: 'path/to/trace.binpb',
         endlessTraceBuffer: true,
         dumpSkpOnShaderCompilation: true,
         cacheSkSL: true,
         purgePersistentCache: true,
         useTestFonts: true,
         verboseSystemLogs: true,
+        enableImpeller: ImpellerStatus.enabled,
         nullAssertions: true,
       ),
       platformArgs: <String, dynamic>{},
       userIdentifier: '10',
     );
 
-    // This fails to start due to observatory discovery issues.
+    // This fails to start due to VM Service discovery issues.
     expect(launchResult.started, false);
-    expect(processManager.hasRemainingExpectations, false);
+    expect(processManager, hasNoRemainingExpectations);
   });
 }
 
-class MockAndroidSdk extends Mock implements AndroidSdk {}
+class FakeAndroidSdk extends Fake implements AndroidSdk {
+  @override
+  String get adbPath => 'adb';
+
+  @override
+  bool get licensesAvailable => false;
+}

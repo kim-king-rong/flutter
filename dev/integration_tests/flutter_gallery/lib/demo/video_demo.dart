@@ -4,14 +4,15 @@
 
 import 'dart:async';
 import 'dart:io';
+
 import 'package:connectivity/connectivity.dart';
+import 'package:device_info/device_info.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
-import 'package:device_info/device_info.dart';
 
 class VideoCard extends StatelessWidget {
-  const VideoCard({ Key? key, this.controller, this.title, this.subtitle }) : super(key: key);
+  const VideoCard({ super.key, this.controller, this.title, this.subtitle });
 
   final VideoPlayerController? controller;
   final String? title;
@@ -92,12 +93,12 @@ class VideoCard extends StatelessWidget {
 }
 
 class VideoPlayerLoading extends StatefulWidget {
-  const VideoPlayerLoading(this.controller);
+  const VideoPlayerLoading(this.controller, {super.key});
 
   final VideoPlayerController? controller;
 
   @override
-  _VideoPlayerLoadingState createState() => _VideoPlayerLoadingState();
+  State<VideoPlayerLoading> createState() => _VideoPlayerLoadingState();
 }
 
 class _VideoPlayerLoadingState extends State<VideoPlayerLoading> {
@@ -126,17 +127,17 @@ class _VideoPlayerLoadingState extends State<VideoPlayerLoading> {
       return VideoPlayer(widget.controller!);
     }
     return Stack(
+      fit: StackFit.expand,
       children: <Widget>[
         VideoPlayer(widget.controller!),
         const Center(child: CircularProgressIndicator()),
       ],
-      fit: StackFit.expand,
     );
   }
 }
 
 class VideoPlayPause extends StatefulWidget {
-  const VideoPlayPause(this.controller);
+  const VideoPlayPause(this.controller, {super.key});
 
   final VideoPlayerController? controller;
 
@@ -147,8 +148,9 @@ class VideoPlayPause extends StatefulWidget {
 class _VideoPlayPauseState extends State<VideoPlayPause> {
   _VideoPlayPauseState() {
     listener = () {
-      if (mounted)
+      if (mounted) {
         setState(() { });
+      }
     };
   }
 
@@ -202,6 +204,7 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
 
 class FadeAnimation extends StatefulWidget {
   const FadeAnimation({
+    super.key,
     this.child,
     this.duration = const Duration(milliseconds: 500),
   });
@@ -210,7 +213,7 @@ class FadeAnimation extends StatefulWidget {
   final Duration duration;
 
   @override
-  _FadeAnimationState createState() => _FadeAnimationState();
+  State<FadeAnimation> createState() => _FadeAnimationState();
 }
 
 class _FadeAnimationState extends State<FadeAnimation> with SingleTickerProviderStateMixin {
@@ -264,6 +267,7 @@ class _FadeAnimationState extends State<FadeAnimation> with SingleTickerProvider
 
 class ConnectivityOverlay extends StatefulWidget {
   const ConnectivityOverlay({
+    super.key,
     this.child,
     this.connectedCompleter,
   });
@@ -272,7 +276,7 @@ class ConnectivityOverlay extends StatefulWidget {
   final Completer<void>? connectedCompleter;
 
   @override
-  _ConnectivityOverlayState createState() => _ConnectivityOverlayState();
+  State<ConnectivityOverlay> createState() => _ConnectivityOverlayState();
 }
 
 class _ConnectivityOverlayState extends State<ConnectivityOverlay> {
@@ -340,12 +344,12 @@ class _ConnectivityOverlayState extends State<ConnectivityOverlay> {
 }
 
 class VideoDemo extends StatefulWidget {
-  const VideoDemo({ Key? key }) : super(key: key);
+  const VideoDemo({ super.key });
 
   static const String routeName = '/video';
 
   @override
-  _VideoDemoState createState() => _VideoDemoState();
+  State<VideoDemo> createState() => _VideoDemoState();
 }
 
 final DeviceInfoPlugin deviceInfoPlugin = DeviceInfoPlugin();
@@ -363,10 +367,8 @@ class _VideoDemoState extends State<VideoDemo> with SingleTickerProviderStateMix
     videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
   );
 
-  // TODO(sigurdm): This should not be stored here.
-  static const String beeUri = 'https://flutter.github.io/assets-for-api-docs/assets/videos/bee.mp4';
-  final VideoPlayerController beeController = VideoPlayerController.network(
-    beeUri,
+  final VideoPlayerController beeController = VideoPlayerController.networkUrl(
+    Uri.parse('https://flutter.github.io/assets-for-api-docs/assets/videos/bee.mp4'),
     videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
   );
 
@@ -379,14 +381,12 @@ class _VideoDemoState extends State<VideoDemo> with SingleTickerProviderStateMix
     super.initState();
 
     Future<void> initController(VideoPlayerController controller, String name) async {
-      print('> VideoDemo initController "$name" ${isDisposed ? "DISPOSED" : ""}');
       controller.setLooping(true);
       controller.setVolume(0.0);
       controller.play();
       await connectedCompleter.future;
       await controller.initialize();
       if (mounted) {
-        print('< VideoDemo initController "$name" done ${isDisposed ? "DISPOSED" : ""}');
         setState(() { });
       }
     }
@@ -400,11 +400,9 @@ class _VideoDemoState extends State<VideoDemo> with SingleTickerProviderStateMix
 
   @override
   void dispose() {
-    print('> VideoDemo dispose');
     isDisposed  = true;
     butterflyController.dispose();
     beeController.dispose();
-    print('< VideoDemo dispose');
     super.dispose();
   }
 
@@ -416,8 +414,10 @@ class _VideoDemoState extends State<VideoDemo> with SingleTickerProviderStateMix
       ),
       body: isSupported
         ? ConnectivityOverlay(
+            connectedCompleter: connectedCompleter,
             child: Scrollbar(
               child: ListView(
+                primary: true,
                 children: <Widget>[
                   VideoCard(
                     title: 'Butterfly',
@@ -432,7 +432,6 @@ class _VideoDemoState extends State<VideoDemo> with SingleTickerProviderStateMix
                 ],
               ),
             ),
-            connectedCompleter: connectedCompleter,
           )
         : const Center(
             child: Text(

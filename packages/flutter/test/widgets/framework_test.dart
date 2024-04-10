@@ -2,10 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'package:flutter/material.dart';
-import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/widgets.dart';
+import 'package:flutter/gestures.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:leak_tracker_testing/leak_tracker_testing.dart';
 
 typedef ElementRebuildCallback = void Function(StatefulElement element);
 
@@ -16,7 +19,7 @@ class TestState extends State<StatefulWidget> {
 
 @optionalTypeArgs
 class _MyGlobalObjectKey<T extends State<StatefulWidget>> extends GlobalObjectKey<T> {
-  const _MyGlobalObjectKey(Object value) : super(value);
+  const _MyGlobalObjectKey(super.value);
 }
 
 void main() {
@@ -168,7 +171,7 @@ void main() {
             ],
           );
         },
-      )
+      ),
     );
     // Result will be written during first build and need to clear it to remove
     // noise.
@@ -215,7 +218,7 @@ void main() {
             ],
           );
         },
-      )
+      ),
     );
     expect(rebuiltKeyOfSecondChildBeforeLayout, key2);
     expect(rebuiltKeyOfFirstChildAfterLayout, key2);
@@ -264,7 +267,7 @@ void main() {
             ],
           );
         },
-      )
+      ),
     );
     // Result will be written during first build and need to clear it to remove
     // noise.
@@ -318,7 +321,7 @@ void main() {
             ],
           );
         },
-      )
+      ),
     );
     expect(rebuiltKeyOfSecondChildBeforeLayout, key2);
     expect(rebuiltKeyOfSecondChildAfterLayout, key3);
@@ -362,7 +365,7 @@ void main() {
             ],
           );
         },
-      )
+      ),
     );
     // Result will be written during first build and need to clear it to remove
     // noise.
@@ -410,7 +413,7 @@ void main() {
             ],
           );
         },
-      )
+      ),
     );
     expect(rebuiltKeyOfSecondChildBeforeLayout, key1);
     expect(rebuiltKeyOfThirdChildAfterLayout, key1);
@@ -440,12 +443,14 @@ void main() {
         'The key [GlobalKey#00000 problematic] was used by multiple widgets. The parents of those widgets were:\n'
         '- Container-[<1>]\n'
         '- Container-[<2>]\n'
-        'A GlobalKey can only be specified on one widget at a time in the widget tree.'
+        'A GlobalKey can only be specified on one widget at a time in the widget tree.',
       ),
     );
   });
 
-  testWidgets('GlobalKey duplication 2 - splitting and changing type', (WidgetTester tester) async {
+  testWidgets('GlobalKey duplication 2 - splitting and changing type',
+  experimentalLeakTesting: LeakTesting.settings.withIgnoredAll(), // leaking by design because of exception
+  (WidgetTester tester) async {
     final Key key = GlobalKey(debugLabel: 'problematic');
 
     await tester.pumpWidget(Stack(
@@ -458,7 +463,7 @@ void main() {
           key: const ValueKey<int>(2),
         ),
         Container(
-          key: key
+          key: key,
         ),
       ],
     ));
@@ -486,12 +491,14 @@ void main() {
         'The key [GlobalKey#00000 problematic] was used by multiple widgets. The parents of those widgets were:\n'
         '- Container-[<1>]\n'
         '- Container-[<2>]\n'
-        'A GlobalKey can only be specified on one widget at a time in the widget tree.'
+        'A GlobalKey can only be specified on one widget at a time in the widget tree.',
       ),
     );
   });
 
-  testWidgets('GlobalKey duplication 3 - splitting and changing type', (WidgetTester tester) async {
+  testWidgets('GlobalKey duplication 3 - splitting and changing type',
+  experimentalLeakTesting: LeakTesting.settings.withIgnoredAll(), // leaking by design because of exception
+  (WidgetTester tester) async {
     final Key key = GlobalKey(debugLabel: 'problematic');
     await tester.pumpWidget(Stack(
       textDirection: TextDirection.ltr,
@@ -511,16 +518,16 @@ void main() {
     expect(
       exception.toString(),
       equalsIgnoringHashCodes(
-        'Multiple widgets used the same GlobalKey.\n'
-        'The key [GlobalKey#00000 problematic] was used by 2 widgets:\n'
-        '  SizedBox-[GlobalKey#00000 problematic]\n'
-        '  Placeholder-[GlobalKey#00000 problematic]\n'
-        'A GlobalKey can only be specified on one widget at a time in the widget tree.'
+        'Duplicate keys found.\n'
+        'If multiple keyed widgets exist as children of another widget, they must have unique keys.\n'
+        'Stack(alignment: AlignmentDirectional.topStart, textDirection: ltr, fit: loose) has multiple children with key [GlobalKey#00000 problematic].'
       ),
     );
   });
 
-  testWidgets('GlobalKey duplication 4 - splitting and half changing type', (WidgetTester tester) async {
+  testWidgets('GlobalKey duplication 4 - splitting and half changing type',
+  experimentalLeakTesting: LeakTesting.settings.withIgnoredAll(), // leaking by design because of exception
+  (WidgetTester tester) async {
     final Key key = GlobalKey(debugLabel: 'problematic');
     await tester.pumpWidget(Stack(
       textDirection: TextDirection.ltr,
@@ -540,16 +547,16 @@ void main() {
     expect(
       exception.toString(),
       equalsIgnoringHashCodes(
-        'Multiple widgets used the same GlobalKey.\n'
-        'The key [GlobalKey#00000 problematic] was used by 2 widgets:\n'
-        '  Container-[GlobalKey#00000 problematic]\n'
-        '  Placeholder-[GlobalKey#00000 problematic]\n'
-        'A GlobalKey can only be specified on one widget at a time in the widget tree.'
+        'Duplicate keys found.\n'
+        'If multiple keyed widgets exist as children of another widget, they must have unique keys.\n'
+        'Stack(alignment: AlignmentDirectional.topStart, textDirection: ltr, fit: loose) has multiple children with key [GlobalKey#00000 problematic].'
       ),
     );
   });
 
-  testWidgets('GlobalKey duplication 5 - splitting and half changing type', (WidgetTester tester) async {
+  testWidgets('GlobalKey duplication 5 - splitting and half changing type',
+  experimentalLeakTesting: LeakTesting.settings.withIgnoredAll(), // leaking by design because of exception
+  (WidgetTester tester) async {
     final Key key = GlobalKey(debugLabel: 'problematic');
     await tester.pumpWidget(Stack(
       textDirection: TextDirection.ltr,
@@ -567,7 +574,9 @@ void main() {
     expect(tester.takeException(), isFlutterError);
   });
 
-  testWidgets('GlobalKey duplication 6 - splitting and not changing type', (WidgetTester tester) async {
+  testWidgets('GlobalKey duplication 6 - splitting and not changing type',
+  experimentalLeakTesting: LeakTesting.settings.withIgnoredAll(), // leaking by design because of exception
+  (WidgetTester tester) async {
     final Key key = GlobalKey(debugLabel: 'problematic');
     await tester.pumpWidget(Stack(
       textDirection: TextDirection.ltr,
@@ -719,13 +728,15 @@ void main() {
       exception.toString(),
       equalsIgnoringHashCodes(
         'Duplicate keys found.\n'
-        'If multiple keyed nodes exist as children of another node, they must have unique keys.\n'
-        'Stack(alignment: AlignmentDirectional.topStart, textDirection: ltr, fit: loose) has multiple children with key [GlobalKey#00000 problematic].'
+        'If multiple keyed widgets exist as children of another widget, they must have unique keys.\n'
+        'Stack(alignment: AlignmentDirectional.topStart, textDirection: ltr, fit: loose) has multiple children with key [GlobalKey#00000 problematic].',
       ),
     );
   });
 
-  testWidgets('GlobalKey duplication 13 - all kinds of badness at once', (WidgetTester tester) async {
+  testWidgets('GlobalKey duplication 13 - all kinds of badness at once',
+  experimentalLeakTesting: LeakTesting.settings.withIgnoredAll(), // leaking by design because of exception
+  (WidgetTester tester) async {
     final Key key1 = GlobalKey(debugLabel: 'problematic');
     final Key key2 = GlobalKey(debugLabel: 'problematic'); // intentionally the same label
     final Key key3 = GlobalKey(debugLabel: 'also problematic');
@@ -735,8 +746,8 @@ void main() {
         Container(key: key1),
         Container(key: key2),
         Container(key: key3),
-      ]),
-    );
+      ],
+    ));
     await tester.pumpWidget(Stack(
       textDirection: TextDirection.ltr,
       children: <Widget>[
@@ -891,7 +902,7 @@ void main() {
         'removed due to GlobalKey reparenting is:\n'
         '- Stack(alignment: AlignmentDirectional.topStart, textDirection: ltr, fit: loose, '
         'renderObject: RenderStack#00000)\n'
-        'A GlobalKey can only be specified on one widget at a time in the widget tree.'
+        'A GlobalKey can only be specified on one widget at a time in the widget tree.',
       ),
     );
   });
@@ -903,7 +914,7 @@ void main() {
       children: <Widget>[
         const SwapKeyWidget(childKey: ValueKey<int>(0)),
         Container(key: const ValueKey<int>(1)),
-        Container(child: SizedBox(key: key)),
+        ColoredBox(color: Colors.green, child: SizedBox(key: key)),
       ],
     );
     await tester.pumpWidget(stack);
@@ -919,7 +930,7 @@ void main() {
         'The key [GlobalKey#95367 problematic] was used by 2 widgets:\n'
         '  SizedBox-[GlobalKey#00000 problematic]\n'
         '  Container-[GlobalKey#00000 problematic]\n'
-        'A GlobalKey can only be specified on one widget at a time in the widget tree.'
+        'A GlobalKey can only be specified on one widget at a time in the widget tree.',
       ),
     );
   });
@@ -958,7 +969,7 @@ void main() {
             ],
           );
         },
-      )
+      ),
     );
     // Result will be written during first build and need to clear it to remove
     // noise.
@@ -1005,7 +1016,7 @@ void main() {
             ],
           );
         },
-      )
+      ),
     );
     expect(rebuiltKeyOfSecondChildBeforeLayout, key2);
     expect(rebuiltKeyOfFirstChildAfterLayout, key2);
@@ -1020,19 +1031,22 @@ void main() {
         'parents of those widgets were:\n'
         '- _Stateful(state: _StatefulState#00000)\n'
         '- _Stateful(state: _StatefulState#00000)\n'
-        'A GlobalKey can only be specified on one widget at a time in the widget tree.'
+        'A GlobalKey can only be specified on one widget at a time in the widget tree.',
       ),
     );
   });
 
   testWidgets('GlobalKey - detach and re-attach child to different parents', (WidgetTester tester) async {
+    final ScrollController scrollController = ScrollController();
+    addTearDown(scrollController.dispose);
+
     await tester.pumpWidget(Directionality(
       textDirection: TextDirection.ltr,
       child: Center(
-        child: Container(
+        child: SizedBox(
           height: 100,
           child: CustomScrollView(
-            controller: ScrollController(),
+            controller: scrollController,
             slivers: <Widget>[
               SliverList(
                 delegate: SliverChildListDelegate(<Widget>[
@@ -1066,7 +1080,8 @@ void main() {
     const Key key2 = GlobalObjectKey('key2');
     late StateSetter setState;
     int tabBarViewCnt = 2;
-    TabController tabController = TabController(length: tabBarViewCnt, vsync: const TestVSync(),);
+    TabController tabController = TabController(length: tabBarViewCnt, vsync: const TestVSync());
+    addTearDown(tabController.dispose);
 
     await tester.pumpWidget(Directionality(
       textDirection: TextDirection.ltr,
@@ -1076,8 +1091,8 @@ void main() {
           return TabBarView(
             controller: tabController,
             children: <Widget>[
-              if (tabBarViewCnt > 0) const Text('key1', key: key1,),
-              if (tabBarViewCnt > 1) const Text('key2', key: key2,),
+              if (tabBarViewCnt > 0) const Text('key1', key: key1),
+              if (tabBarViewCnt > 1) const Text('key2', key: key2),
             ],
           );
         },
@@ -1087,7 +1102,7 @@ void main() {
     expect(tabController.index, 0);
 
     // switch tabs 0 -> 1
-    setState((){
+    setState(() {
       tabController.index = 1;
     });
 
@@ -1096,9 +1111,10 @@ void main() {
     expect(tabController.index, 1);
 
     // rebuild TabBarView that only have the 1st page with GlobalKey 'key1'
-    setState((){
+    setState(() {
       tabBarViewCnt = 1;
-      tabController = TabController(length: tabBarViewCnt, vsync: const TestVSync(),);
+      tabController = TabController(length: tabBarViewCnt, vsync: const TestVSync());
+      addTearDown(tabController.dispose);
     });
 
     await tester.pump(const Duration(seconds: 1)); // finish the animation
@@ -1159,7 +1175,7 @@ void main() {
       children: <Widget>[
         Container(),
         Container(key: key1 = GlobalKey()),
-        Container(child: Container()),
+        Container(),
         Container(key: key2 = GlobalKey()),
         Container(),
       ],
@@ -1171,6 +1187,64 @@ void main() {
     );
   });
 
+  testWidgets('Can not attach a non-RenderObjectElement to the MultiChildRenderObjectElement - mount', (WidgetTester tester) async {
+    await tester.pumpWidget(
+      Column(
+        children: <Widget>[
+          Container(),
+          const _EmptyWidget(),
+        ],
+      ),
+    );
+
+    final dynamic exception = tester.takeException();
+    expect(exception, isFlutterError);
+    expect(
+      exception.toString(),
+      startsWith(
+        'The children of `MultiChildRenderObjectElement` must each has an associated render object.\n'
+        'This typically means that the `_EmptyWidget` or its children\n'
+        'are not a subtype of `RenderObjectWidget`.\n'
+        'The following element does not have an associated render object:\n'
+        '  _EmptyWidget\n'
+        'debugCreator: _EmptyWidget ← Column ← ', // Omitted end of debugCreator chain because it's irrelevant for test.
+      ),
+    );
+  });
+
+  testWidgets('Can not attach a non-RenderObjectElement to the MultiChildRenderObjectElement - update', (WidgetTester tester) async {
+    await tester.pumpWidget(
+      Column(
+        children: <Widget>[
+          Container(),
+        ],
+      ),
+    );
+
+    await tester.pumpWidget(
+      Column(
+        children: <Widget>[
+          Container(),
+          const _EmptyWidget(),
+        ],
+      ),
+    );
+
+    final dynamic exception = tester.takeException();
+    expect(exception, isFlutterError);
+    expect(
+      exception.toString(),
+      startsWith(
+        'The children of `MultiChildRenderObjectElement` must each has an associated render object.\n'
+        'This typically means that the `_EmptyWidget` or its children\n'
+        'are not a subtype of `RenderObjectWidget`.\n'
+        'The following element does not have an associated render object:\n'
+        '  _EmptyWidget\n'
+        'debugCreator: _EmptyWidget ← Column ← ', // Omitted end of debugCreator chain because it's irrelevant for test.
+      ),
+    );
+  });
+
   testWidgets('Element diagnostics', (WidgetTester tester) async {
     GlobalKey key0;
     await tester.pumpWidget(Column(
@@ -1178,7 +1252,7 @@ void main() {
       children: <Widget>[
         Container(),
         Container(key: GlobalKey()),
-        Container(child: Container()),
+        ColoredBox(color: Colors.green, child: Container()),
         Container(key: GlobalKey()),
         Container(),
       ],
@@ -1196,10 +1270,10 @@ void main() {
         '├Container-[GlobalKey#00000]\n'
         '│└LimitedBox(maxWidth: 0.0, maxHeight: 0.0, renderObject: RenderLimitedBox#00000 relayoutBoundary=up1)\n'
         '│ └ConstrainedBox(BoxConstraints(biggest), renderObject: RenderConstrainedBox#00000 relayoutBoundary=up2)\n'
-        '├Container\n'
+        '├ColoredBox(color: MaterialColor(primary value: Color(0xff4caf50)), renderObject: _RenderColoredBox#00000 relayoutBoundary=up1)\n'
         '│└Container\n'
-        '│ └LimitedBox(maxWidth: 0.0, maxHeight: 0.0, renderObject: RenderLimitedBox#00000 relayoutBoundary=up1)\n'
-        '│  └ConstrainedBox(BoxConstraints(biggest), renderObject: RenderConstrainedBox#00000 relayoutBoundary=up2)\n'
+        '│ └LimitedBox(maxWidth: 0.0, maxHeight: 0.0, renderObject: RenderLimitedBox#00000 relayoutBoundary=up2)\n'
+        '│  └ConstrainedBox(BoxConstraints(biggest), renderObject: RenderConstrainedBox#00000 relayoutBoundary=up3)\n'
         '├Container-[GlobalKey#00000]\n'
         '│└LimitedBox(maxWidth: 0.0, maxHeight: 0.0, renderObject: RenderLimitedBox#00000 relayoutBoundary=up1)\n'
         '│ └ConstrainedBox(BoxConstraints(biggest), renderObject: RenderConstrainedBox#00000 relayoutBoundary=up2)\n'
@@ -1211,13 +1285,14 @@ void main() {
   });
 
   testWidgets('scheduleBuild while debugBuildingDirtyElements is true', (WidgetTester tester) async {
-    /// ignore here is required for testing purpose because changing the flag properly is hard
+    // ignore here is required for testing purpose because changing the flag properly is hard
     // ignore: invalid_use_of_protected_member
     tester.binding.debugBuildingDirtyElements = true;
     late FlutterError error;
     try {
       tester.binding.buildOwner!.scheduleBuildFor(
-        DirtyElementWithCustomBuildOwner(tester.binding.buildOwner!, Container()));
+        DirtyElementWithCustomBuildOwner(tester.binding.buildOwner!, Container()),
+      );
     } on FlutterError catch (e) {
       error = e;
     } finally {
@@ -1301,7 +1376,7 @@ void main() {
       },
       build: (bool value) {
         isBuildDecorated = value;
-      }
+      },
     );
 
     await tester.pumpWidget(Inherited(0, child: child));
@@ -1404,6 +1479,7 @@ void main() {
       bool? debugDoingBuildOnUpdateRenderObject;
       bool? debugDoingBuildOnDidUnmountRenderObject;
       final ValueNotifier<int> notifier = ValueNotifier<int>(0);
+      addTearDown(notifier.dispose);
 
       late BuildContext spyContext;
 
@@ -1459,13 +1535,16 @@ void main() {
     });
   });
 
-  testWidgets('A widget whose element has an invalid visitChildren implementation triggers a useful error message', (WidgetTester tester) async {
+  testWidgets('A widget whose element has an invalid visitChildren implementation triggers a useful error message',
+  experimentalLeakTesting: LeakTesting.settings.withIgnoredAll(), // leaking by design because of exception
+  (WidgetTester tester) async {
     final GlobalKey key = GlobalKey();
-    await tester.pumpWidget(Container(child: _WidgetWithNoVisitChildren(_StatefulLeaf(key: key))));
+    await tester.pumpWidget(_WidgetWithNoVisitChildren(_StatefulLeaf(key: key)));
     (key.currentState! as _StatefulLeafState).markNeedsBuild();
     await tester.pumpWidget(Container());
     final dynamic exception = tester.takeException();
     expect(
+      // ignore: avoid_dynamic_calls
       exception.message,
       equalsIgnoringHashCodes(
         'Tried to build dirty widget in the wrong build scope.\n'
@@ -1479,15 +1558,312 @@ void main() {
         '  [root]\n'
         'The offending element (which does not appear to be a descendant of the root of '
         'the build scope) was:\n'
-        '  _StatefulLeaf-[GlobalKey#00000]'
-      )
+        '  _StatefulLeaf-[GlobalKey#00000]',
+      ),
     );
+  });
+
+  testWidgets('Can create BuildOwner that does not interfere with pointer router or raw key event handler', (WidgetTester tester) async {
+    final int pointerRouterCount = GestureBinding.instance.pointerRouter.debugGlobalRouteCount;
+    final RawKeyEventHandler? rawKeyEventHandler = RawKeyboard.instance.keyEventHandler;
+    expect(rawKeyEventHandler, isNotNull);
+    final FocusManager focusManager = FocusManager();
+    addTearDown(focusManager.dispose);
+    BuildOwner(focusManager: focusManager);
+    expect(GestureBinding.instance.pointerRouter.debugGlobalRouteCount, pointerRouterCount);
+    expect(RawKeyboard.instance.keyEventHandler, same(rawKeyEventHandler));
+  });
+
+  testWidgets('Can access debugFillProperties without _LateInitializationError', (WidgetTester tester) async {
+    final DiagnosticPropertiesBuilder builder = DiagnosticPropertiesBuilder();
+    TestRenderObjectElement().debugFillProperties(builder);
+    expect(builder.properties.any((DiagnosticsNode property) => property.name == 'renderObject' && property.value == null), isTrue);
+  });
+
+  testWidgets('debugFillProperties sorts dependencies in alphabetical order', (WidgetTester tester) async {
+    final DiagnosticPropertiesBuilder builder = DiagnosticPropertiesBuilder();
+    final TestRenderObjectElement element = TestRenderObjectElement();
+
+    final _TestInheritedElement focusTraversalOrder =
+    _TestInheritedElement(const FocusTraversalOrder(
+      order: LexicalFocusOrder(''),
+      child: Placeholder(),
+    ));
+    final _TestInheritedElement directionality =
+        _TestInheritedElement(const Directionality(
+      textDirection: TextDirection.ltr,
+      child: Placeholder(),
+    ));
+    final _TestInheritedElement navigationBarTheme =
+        _TestInheritedElement(const NavigationBarTheme(
+        data: NavigationBarThemeData(
+          indicatorColor: Color(0xff00ff00),
+        ),
+      child: Placeholder(),
+    ));
+
+    // Dependencies are added out of alphabetical order.
+    element
+      ..dependOnInheritedElement(focusTraversalOrder)
+      ..dependOnInheritedElement(directionality)
+      ..dependOnInheritedElement(navigationBarTheme);
+
+    // Dependencies will be sorted by [debugFillProperties].
+    element.debugFillProperties(builder);
+
+    expect(
+      builder.properties.any((DiagnosticsNode property) => property.name == 'dependencies' && property.value != null),
+      isTrue,
+    );
+    final DiagnosticsProperty<Set<InheritedElement>> dependenciesProperty =
+        builder.properties.firstWhere((DiagnosticsNode property) => property.name == 'dependencies') as DiagnosticsProperty<Set<InheritedElement>>;
+    expect(dependenciesProperty, isNotNull);
+
+    final Set<InheritedElement> dependencies = dependenciesProperty.value!;
+    expect(dependencies.length, equals(3));
+    expect(dependenciesProperty.toDescription(), '[Directionality, FocusTraversalOrder, NavigationBarTheme]');
+  });
+
+  testWidgets('BuildOwner.globalKeyCount keeps track of in-use global keys', (WidgetTester tester) async {
+    final int initialCount = tester.binding.buildOwner!.globalKeyCount;
+    final GlobalKey key1 = GlobalKey();
+    final GlobalKey key2 = GlobalKey();
+    await tester.pumpWidget(Container(key: key1));
+    expect(tester.binding.buildOwner!.globalKeyCount, initialCount + 1);
+    await tester.pumpWidget(Container(key: key1, child: Container()));
+    expect(tester.binding.buildOwner!.globalKeyCount, initialCount + 1);
+    await tester.pumpWidget(Container(key: key1, child: Container(key: key2)));
+    expect(tester.binding.buildOwner!.globalKeyCount, initialCount + 2);
+    await tester.pumpWidget(Container());
+    expect(tester.binding.buildOwner!.globalKeyCount, initialCount + 0);
+  });
+
+  testWidgets('Widget and State properties are nulled out when unmounted', (WidgetTester tester) async {
+    await tester.pumpWidget(const _StatefulLeaf());
+    final StatefulElement element = tester.element<StatefulElement>(find.byType(_StatefulLeaf));
+    expect(element.state, isA<State<_StatefulLeaf>>());
+    expect(element.widget, isA<_StatefulLeaf>());
+    // Replace the widget tree to unmount the element.
+    await tester.pumpWidget(Container());
+    // Accessing state/widget now throws a CastError because they have been
+    // nulled out to reduce severity of memory leaks when an Element (e.g. in
+    // the form of a BuildContext) is retained past its useful life. See also
+    // https://github.com/flutter/flutter/issues/79605 for examples why this may
+    // occur.
+    expect(() => element.state, throwsA(isA<TypeError>()));
+    expect(() => element.widget, throwsA(isA<TypeError>()));
+  });
+
+  testWidgets('LayerLink can be swapped between parent and child container layers', (WidgetTester tester) async {
+    // Regression test for https://github.com/flutter/flutter/issues/96959.
+    final LayerLink link = LayerLink();
+    await tester.pumpWidget(_TestLeaderLayerWidget(
+        link: link,
+        child: const _TestLeaderLayerWidget(
+          child: Placeholder(),
+        )
+    ));
+    expect(tester.takeException(), isNull);
+
+    // Swaps the layer link.
+    await tester.pumpWidget(_TestLeaderLayerWidget(
+        child: _TestLeaderLayerWidget(
+          link: link,
+          child: const Placeholder(),
+        ),
+    ));
+    expect(tester.takeException(), isNull);
+
+  });
+
+  testWidgets('Deactivate and activate are called correctly', (WidgetTester tester) async {
+    final List<String> states = <String>[];
+    Widget build([Key? key]) {
+      return StatefulWidgetSpy(
+        key: key,
+        onInitState: (BuildContext context) { states.add('initState'); },
+        onDidUpdateWidget: (BuildContext context) { states.add('didUpdateWidget'); },
+        onDeactivate: (BuildContext context) { states.add('deactivate'); },
+        onActivate: (BuildContext context) { states.add('activate'); },
+        onBuild: (BuildContext context) { states.add('build'); },
+        onDispose: (BuildContext context) { states.add('dispose'); },
+      );
+    }
+    Future<void> pumpWidget(Widget widget) {
+      states.clear();
+      return tester.pumpWidget(widget);
+    }
+
+    await pumpWidget(build());
+    expect(states, <String>['initState', 'build']);
+    await pumpWidget(Container(child: build()));
+    expect(states, <String>['deactivate', 'initState', 'build', 'dispose']);
+    await pumpWidget(Container());
+    expect(states, <String>['deactivate', 'dispose']);
+
+    final GlobalKey key = GlobalKey();
+    await pumpWidget(build(key));
+    expect(states, <String>['initState', 'build']);
+    await pumpWidget(Container(child: build(key)));
+    expect(states, <String>['deactivate', 'activate', 'didUpdateWidget', 'build']);
+    await pumpWidget(Container());
+    expect(states, <String>['deactivate', 'dispose']);
+  });
+
+  testWidgets('Element.deactivate reports its deactivation to the InheritedElement it depends on', (WidgetTester tester) async {
+    final List<Key> removedDependentWidgetKeys = <Key>[];
+
+    InheritedElement elementCreator(InheritedWidget widget) {
+      return _InheritedElementSpy(
+        widget,
+        onRemoveDependent: (Element dependent) {
+          removedDependentWidgetKeys.add(dependent.widget.key!);
+        },
+      );
+    }
+
+    Widget builder(BuildContext context) {
+      context.dependOnInheritedWidgetOfExactType<Inherited>();
+      return Container();
+    }
+
+    await tester.pumpWidget(
+      Inherited(
+        0,
+        elementCreator: elementCreator,
+        child: Column(
+          children: <Widget>[
+            Builder(
+              key: const Key('dependent'),
+              builder: builder,
+            ),
+          ],
+        ),
+      ),
+    );
+
+    expect(removedDependentWidgetKeys, isEmpty);
+
+    await tester.pumpWidget(
+      Inherited(
+        0,
+        elementCreator: elementCreator,
+        child: Column(
+          children: <Widget>[
+            Container(),
+          ],
+        ),
+      ),
+    );
+
+    expect(removedDependentWidgetKeys, hasLength(1));
+    expect(removedDependentWidgetKeys.first, const Key('dependent'));
+  });
+
+  testWidgets('RenderObjectElement.unmount disposes of its renderObject', (WidgetTester tester) async {
+    await tester.pumpWidget(const Placeholder());
+    final RenderObjectElement element = tester.allElements.whereType<RenderObjectElement>().last;
+    final RenderObject renderObject = element.renderObject;
+    expect(renderObject.debugDisposed, false);
+
+    await tester.pumpWidget(Container());
+
+    expect(() => element.renderObject, throwsAssertionError);
+    expect(renderObject.debugDisposed, true);
+  });
+
+  testWidgets('Getting the render object of an unmounted element throws', (WidgetTester tester) async {
+    await tester.pumpWidget(const _StatefulLeaf());
+    final StatefulElement element = tester.element<StatefulElement>(find.byType(_StatefulLeaf));
+    expect(element.state, isA<State<_StatefulLeaf>>());
+    expect(element.widget, isA<_StatefulLeaf>());
+    // Replace the widget tree to unmount the element.
+    await tester.pumpWidget(Container());
+
+  expect(
+    () => element.findRenderObject(),
+    throwsA(isA<FlutterError>().having(
+      (FlutterError error) => error.message,
+      'message',
+      equalsIgnoringHashCodes('''
+Cannot get renderObject of inactive element.
+In order for an element to have a valid renderObject, it must be active, which means it is part of the tree.
+Instead, this element is in the _ElementLifecycle.defunct state.
+If you called this method from a State object, consider guarding it with State.mounted.
+The findRenderObject() method was called for the following element:
+  StatefulElement#00000(DEFUNCT)'''),
+      )),
+    );
+  });
+
+  testWidgets('Elements use the identity hashCode',
+  experimentalLeakTesting: LeakTesting.settings.withIgnoredAll(), // The test leaks by design.
+  (WidgetTester tester) async {
+    final StatefulElement statefulElement = StatefulElement(const _StatefulLeaf());
+    expect(statefulElement.hashCode, identityHashCode(statefulElement));
+
+    final StatelessElement statelessElement = StatelessElement(const Placeholder());
+
+    expect(statelessElement.hashCode, identityHashCode(statelessElement));
+
+    final InheritedElement inheritedElement = InheritedElement(
+      const Directionality(textDirection: TextDirection.ltr, child: Placeholder()),
+    );
+
+    expect(inheritedElement.hashCode, identityHashCode(inheritedElement));
+  });
+
+  testWidgets('doesDependOnInheritedElement', (WidgetTester tester) async {
+    final _TestInheritedElement ancestor =
+        _TestInheritedElement(const Directionality(
+      textDirection: TextDirection.ltr,
+      child: Placeholder(),
+    ));
+    final _TestInheritedElement child =
+        _TestInheritedElement(const Directionality(
+      textDirection: TextDirection.ltr,
+      child: Placeholder(),
+    ));
+    expect(child.doesDependOnInheritedElement(ancestor), isFalse);
+    child.dependOnInheritedElement(ancestor);
+    expect(child.doesDependOnInheritedElement(ancestor), isTrue);
+  });
+
+  testWidgets(
+      'MultiChildRenderObjectElement.updateChildren test',
+      (WidgetTester tester) async {
+    // Regression test for https://github.com/flutter/flutter/issues/120762.
+    final GlobalKey globalKey = GlobalKey();
+    await tester.pumpWidget(Column(
+      children: <Widget>[
+        const SizedBox(),
+        SizedBox(key: globalKey),
+        const SizedBox(),
+      ],
+    ));
+    expect(tester.takeException(), isNull);
+
+    await tester.pumpWidget(Column(
+      children: <Widget>[
+        const SizedBox(),
+        const SizedBox(),
+        SizedBox(child: SizedBox(key: globalKey)),
+      ],
+    ));
+    expect(tester.takeException(), isNull);
   });
 }
 
+class _TestInheritedElement extends InheritedElement {
+  _TestInheritedElement(super.widget);
+  @override
+  bool doesDependOnInheritedElement(InheritedElement element) {
+    return super.doesDependOnInheritedElement(element);
+  }
+}
+
 class _WidgetWithNoVisitChildren extends StatelessWidget {
-  const _WidgetWithNoVisitChildren(this.child, { Key? key }) :
-    super(key: key);
+  const _WidgetWithNoVisitChildren(this.child);
 
   final Widget child;
 
@@ -1499,7 +1875,7 @@ class _WidgetWithNoVisitChildren extends StatelessWidget {
 }
 
 class _WidgetWithNoVisitChildrenElement extends StatelessElement {
-  _WidgetWithNoVisitChildrenElement(_WidgetWithNoVisitChildren widget): super(widget);
+  _WidgetWithNoVisitChildrenElement(_WidgetWithNoVisitChildren super.widget);
 
   @override
   void visitChildren(ElementVisitor visitor) {
@@ -1511,7 +1887,7 @@ class _WidgetWithNoVisitChildrenElement extends StatelessElement {
 }
 
 class _StatefulLeaf extends StatefulWidget {
-  const _StatefulLeaf({ Key? key }) : super(key: key);
+  const _StatefulLeaf({ super.key });
 
   @override
   State<_StatefulLeaf> createState() => _StatefulLeafState();
@@ -1530,26 +1906,23 @@ class _StatefulLeafState extends State<_StatefulLeaf> {
 
 class Decorate extends StatefulWidget {
   const Decorate({
-    Key? key,
+    super.key,
     required this.didChangeDependencies,
-    required this.build
-  }) :
-    assert(didChangeDependencies != null),
-    assert(build != null),
-    super(key: key);
+    required this.build,
+  });
 
   final void Function(bool isInBuild) didChangeDependencies;
   final void Function(bool isInBuild) build;
 
   @override
-  _DecorateState createState() => _DecorateState();
+  State<Decorate> createState() => _DecorateState();
 
   @override
   DecorateElement createElement() => DecorateElement(this);
 }
 
 class DecorateElement extends StatefulElement {
-  DecorateElement(Decorate widget): super(widget);
+  DecorateElement(Decorate super.widget);
 
   bool isDecorated = false;
 
@@ -1579,13 +1952,10 @@ class _DecorateState extends State<Decorate> {
 }
 
 class DirtyElementWithCustomBuildOwner extends Element {
-  DirtyElementWithCustomBuildOwner(BuildOwner buildOwner, Widget widget)
-    : _owner = buildOwner, super(widget);
+  DirtyElementWithCustomBuildOwner(BuildOwner buildOwner, super.widget)
+    : _owner = buildOwner;
 
   final BuildOwner _owner;
-
-  @override
-  void performRebuild() {}
 
   @override
   BuildOwner get owner => _owner;
@@ -1598,16 +1968,37 @@ class DirtyElementWithCustomBuildOwner extends Element {
 }
 
 class Inherited extends InheritedWidget {
-  const Inherited(this.value, {Key? key, required Widget child}) : super(key: key, child: child);
+  const Inherited(this.value, {super.key, required super.child, this.elementCreator});
 
   final int? value;
+  final InheritedElement Function(Inherited widget)? elementCreator;
 
   @override
   bool updateShouldNotify(Inherited oldWidget) => oldWidget.value != value;
+
+  @override
+  InheritedElement createElement() {
+    if (elementCreator != null) {
+      return elementCreator!(this);
+    }
+    return super.createElement();
+  }
+}
+
+class _InheritedElementSpy extends InheritedElement {
+  _InheritedElementSpy(super.widget, {this.onRemoveDependent});
+
+  final void Function(Element element)? onRemoveDependent;
+
+  @override
+  void removeDependent(Element dependent) {
+    super.removeDependent(dependent);
+    onRemoveDependent?.call(dependent);
+  }
 }
 
 class DependentStatefulWidget extends StatefulWidget {
-  const DependentStatefulWidget({Key? key}) : super(key: key);
+  const DependentStatefulWidget({super.key});
 
   @override
   State<StatefulWidget> createState() => DependentState();
@@ -1637,7 +2028,7 @@ class DependentState extends State<DependentStatefulWidget> {
 }
 
 class SwapKeyWidget extends StatefulWidget {
-  const SwapKeyWidget({this.childKey}): super();
+  const SwapKeyWidget({super.key, this.childKey});
 
   final Key? childKey;
   @override
@@ -1666,7 +2057,7 @@ class SwapKeyWidgetState extends State<SwapKeyWidget> {
 }
 
 class _Stateful extends StatefulWidget {
-  const _Stateful({Key? key, required this.child, this.onElementRebuild}) : super(key: key);
+  const _Stateful({required this.child, this.onElementRebuild});
   final Text child;
   final ElementRebuildCallback? onElementRebuild;
   @override
@@ -1686,23 +2077,22 @@ class _StatefulState extends State<_Stateful> {
 }
 
 class StatefulElementSpy extends StatefulElement {
-  StatefulElementSpy(StatefulWidget widget) : super(widget);
+  StatefulElementSpy(super.widget);
 
   _Stateful get _statefulWidget => widget as _Stateful;
 
   @override
-  void rebuild() {
+  void rebuild({bool force = false}) {
     _statefulWidget.onElementRebuild?.call(this);
-    super.rebuild();
+    super.rebuild(force: force);
   }
 }
 
 class StatelessWidgetSpy extends StatelessWidget {
   const StatelessWidgetSpy({
-    Key? key,
+    super.key,
     required this.onBuild,
-  })  : assert(onBuild != null),
-        super(key: key);
+  });
 
   final void Function(BuildContext) onBuild;
 
@@ -1715,24 +2105,26 @@ class StatelessWidgetSpy extends StatelessWidget {
 
 class StatefulWidgetSpy extends StatefulWidget {
   const StatefulWidgetSpy({
-    Key? key,
+    super.key,
     this.onBuild,
     this.onInitState,
     this.onDidChangeDependencies,
     this.onDispose,
     this.onDeactivate,
+    this.onActivate,
     this.onDidUpdateWidget,
-  })  : super(key: key);
+  });
 
   final void Function(BuildContext)? onBuild;
   final void Function(BuildContext)? onInitState;
   final void Function(BuildContext)? onDidChangeDependencies;
   final void Function(BuildContext)? onDispose;
   final void Function(BuildContext)? onDeactivate;
+  final void Function(BuildContext)? onActivate;
   final void Function(BuildContext)? onDidUpdateWidget;
 
   @override
-  _StatefulWidgetSpyState createState() => _StatefulWidgetSpyState();
+  State<StatefulWidgetSpy> createState() => _StatefulWidgetSpyState();
 }
 
 class _StatefulWidgetSpyState extends State<StatefulWidgetSpy> {
@@ -1746,6 +2138,12 @@ class _StatefulWidgetSpyState extends State<StatefulWidgetSpy> {
   void deactivate() {
     super.deactivate();
     widget.onDeactivate?.call(context);
+  }
+
+  @override
+  void activate() {
+    super.activate();
+    widget.onActivate?.call(context);
   }
 
   @override
@@ -1775,11 +2173,11 @@ class _StatefulWidgetSpyState extends State<StatefulWidgetSpy> {
 
 class RenderObjectWidgetSpy extends LeafRenderObjectWidget {
   const RenderObjectWidgetSpy({
-    Key? key,
+    super.key,
     this.onCreateRenderObject,
     this.onUpdateRenderObject,
     this.onDidUnmountRenderObject,
-  })  : super(key: key);
+  });
 
   final void Function(BuildContext)? onCreateRenderObject;
   final void Function(BuildContext)? onUpdateRenderObject;
@@ -1812,5 +2210,81 @@ class FakeLeafRenderObject extends RenderBox {
   @override
   void performLayout() {
     size = constraints.biggest;
+  }
+}
+
+class TestRenderObjectElement extends RenderObjectElement {
+  TestRenderObjectElement() : super(Table());
+
+  @override
+  void insertRenderObjectChild(covariant RenderObject child, covariant Object? slot) { }
+
+  @override
+  void moveRenderObjectChild(covariant RenderObject child, covariant Object? oldSlot, covariant Object? newSlot) { }
+
+  @override
+  void removeRenderObjectChild(covariant RenderObject child, covariant Object? slot) { }
+}
+
+class _EmptyWidget extends Widget {
+  const _EmptyWidget();
+
+  @override
+  Element createElement() => _EmptyElement(this);
+}
+
+class _EmptyElement extends Element {
+  _EmptyElement(_EmptyWidget super.widget);
+
+  @override
+  bool get debugDoingBuild => false;
+}
+
+class _TestLeaderLayerWidget extends SingleChildRenderObjectWidget {
+  const _TestLeaderLayerWidget({
+    this.link,
+    super.child,
+  });
+  final LayerLink? link;
+
+  @override
+  _RenderTestLeaderLayerWidget createRenderObject(BuildContext context) {
+    return _RenderTestLeaderLayerWidget(
+      link: link,
+    );
+  }
+
+  @override
+  void updateRenderObject(BuildContext context, _RenderTestLeaderLayerWidget renderObject) {
+    renderObject.link = link;
+  }
+}
+
+class _RenderTestLeaderLayerWidget extends RenderProxyBox {
+  _RenderTestLeaderLayerWidget({
+    LayerLink? link,
+    RenderBox? child,
+  }) : _link = link,
+        super(child);
+
+  LayerLink? get link => _link;
+  LayerLink? _link;
+  set link(LayerLink? value) {
+    if (_link == value) {
+      return;
+    }
+    _link = value;
+    markNeedsPaint();
+  }
+
+  @override
+  bool get isRepaintBoundary => true;
+
+  @override
+  void paint(PaintingContext context, Offset offset) {
+    super.paint(context, offset);
+    if (_link != null) {
+      context.pushLayer(LeaderLayer(link: _link!, offset: offset),(_, __){}, Offset.zero);
+    }
   }
 }

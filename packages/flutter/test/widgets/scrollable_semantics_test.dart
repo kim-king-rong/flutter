@@ -2,13 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'dart:ui';
-
-import 'package:flutter/material.dart';
-import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter/rendering.dart';
-import 'package:flutter/widgets.dart';
 import 'package:flutter/gestures.dart' show DragStartBehavior;
+import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 import 'semantics_tester.dart';
 
@@ -51,7 +48,7 @@ void main() {
     const double kItemHeight = 40.0;
 
     final List<Widget> containers = List<Widget>.generate(80, (int i) => MergeSemantics(
-      child: Container(
+      child: SizedBox(
         height: kItemHeight,
         child: Text('container $i', textDirection: TextDirection.ltr),
       ),
@@ -60,6 +57,7 @@ void main() {
     final ScrollController scrollController = ScrollController(
       initialScrollOffset: kItemHeight / 2,
     );
+    addTearDown(scrollController.dispose);
 
     await tester.pumpWidget(
       Directionality(
@@ -90,7 +88,7 @@ void main() {
     const double kExpandedAppBarHeight = 56.0;
 
     final List<Widget> containers = List<Widget>.generate(80, (int i) => MergeSemantics(
-      child: Container(
+      child: SizedBox(
         height: kItemHeight,
         child: Text('container $i'),
       ),
@@ -99,6 +97,7 @@ void main() {
     final ScrollController scrollController = ScrollController(
       initialScrollOffset: kItemHeight / 2,
     );
+    addTearDown(scrollController.dispose);
 
     await tester.pumpWidget(Directionality(
       textDirection: TextDirection.ltr,
@@ -128,8 +127,9 @@ void main() {
                   ),
                 ],
               );
-            }),
+            },
           ),
+        ),
       ),
     ));
 
@@ -154,9 +154,9 @@ void main() {
     final List<Widget> children = <Widget>[];
     final List<Widget> slivers = List<Widget>.generate(30, (int i) {
       final Widget child = MergeSemantics(
-        child: Container(
-          child: Text('Item $i'),
+        child: SizedBox(
           height: 72.0,
+          child: Text('Item $i'),
         ),
       );
       children.add(child);
@@ -168,6 +168,7 @@ void main() {
     final ScrollController scrollController = ScrollController(
       initialScrollOffset: 2.5 * kItemHeight,
     );
+    addTearDown(scrollController.dispose);
 
     await tester.pumpWidget(Directionality(
       textDirection: TextDirection.ltr,
@@ -233,7 +234,7 @@ void main() {
 
     expect(semantics, includesNodeWith(
       scrollExtentMin: 0.0,
-      scrollPosition: 380.2,
+      scrollPosition: 394.3,
       scrollExtentMax: 520.0,
       actions: <SemanticsAction>[
         SemanticsAction.scrollUp,
@@ -282,7 +283,7 @@ void main() {
 
     expect(semantics, includesNodeWith(
       scrollExtentMin: 0.0,
-      scrollPosition: 380.2,
+      scrollPosition: 394.3,
       scrollExtentMax: double.infinity,
       actions: <SemanticsAction>[
         SemanticsAction.scrollUp,
@@ -294,7 +295,7 @@ void main() {
 
     expect(semantics, includesNodeWith(
       scrollExtentMin: 0.0,
-      scrollPosition: 760.4,
+      scrollPosition: 788.6,
       scrollExtentMax: double.infinity,
       actions: <SemanticsAction>[
         SemanticsAction.scrollUp,
@@ -308,9 +309,9 @@ void main() {
   testWidgets('Semantics tree is populated mid-scroll', (WidgetTester tester) async {
     semantics = SemanticsTester(tester);
 
-    final List<Widget> children = List<Widget>.generate(80, (int i) => Container(
-      child: Text('Item $i'),
+    final List<Widget> children = List<Widget>.generate(80, (int i) => SizedBox(
       height: 40.0,
+      child: Text('Item $i'),
     ));
     await tester.pumpWidget(
       Directionality(
@@ -336,9 +337,9 @@ void main() {
         textDirection: TextDirection.ltr,
         child: ListView(
           children: List<Widget>.generate(40, (int i) {
-            return Container(
-              child: Text('item $i'),
+            return SizedBox(
               height: 400.0,
+              child: Text('item $i'),
             );
           }),
         ),
@@ -410,7 +411,7 @@ void main() {
     setUp(() {
       children = List<Widget>.generate(10, (int i) {
         return MergeSemantics(
-          child: Container(
+          child: SizedBox(
             height: kItemHeight,
             child: Text('container $i'),
           ),
@@ -424,7 +425,7 @@ void main() {
       widgetUnderTest = Directionality(
         textDirection: TextDirection.ltr,
         child: Center(
-          child: Container(
+          child: SizedBox(
             height: 2 * kItemHeight,
             child: ListView(
               controller: scrollController,
@@ -500,7 +501,7 @@ void main() {
           key: i == 5 ? center : null,
           child: MergeSemantics(
             key: ValueKey<int>(i),
-            child: Container(
+            child: SizedBox(
               height: kItemHeight,
               child: Text('container $i'),
             ),
@@ -522,7 +523,7 @@ void main() {
       widgetUnderTest = Directionality(
         textDirection: TextDirection.ltr,
         child: Center(
-          child: Container(
+          child: SizedBox(
             height: 2 * kItemHeight,
             child: Scrollable(
               controller: scrollController,
@@ -538,7 +539,10 @@ void main() {
           ),
         ),
       );
+    });
 
+    tearDown(() {
+      scrollController.dispose();
     });
 
     testWidgets('brings item above leading edge to leading edge', (WidgetTester tester) async {
@@ -642,10 +646,6 @@ void main() {
 Future<void> flingUp(WidgetTester tester, { int repetitions = 1 }) => fling(tester, const Offset(0.0, -200.0), repetitions);
 
 Future<void> flingDown(WidgetTester tester, { int repetitions = 1 }) => fling(tester, const Offset(0.0, 200.0), repetitions);
-
-Future<void> flingRight(WidgetTester tester, { int repetitions = 1 }) => fling(tester, const Offset(200.0, 0.0), repetitions);
-
-Future<void> flingLeft(WidgetTester tester, { int repetitions = 1 }) => fling(tester, const Offset(-200.0, 0.0), repetitions);
 
 Future<void> fling(WidgetTester tester, Offset offset, int repetitions) async {
   while (repetitions-- > 0) {

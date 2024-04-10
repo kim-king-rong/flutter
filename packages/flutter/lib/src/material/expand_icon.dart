@@ -31,7 +31,7 @@ class ExpandIcon extends StatefulWidget {
   /// Creates an [ExpandIcon] with the given padding, and a callback that is
   /// triggered when the icon is pressed.
   const ExpandIcon({
-    Key? key,
+    super.key,
     this.isExpanded = false,
     this.size = 24.0,
     required this.onPressed,
@@ -39,10 +39,7 @@ class ExpandIcon extends StatefulWidget {
     this.color,
     this.disabledColor,
     this.expandedColor,
-  }) : assert(isExpanded != null),
-       assert(size != null),
-       assert(padding != null),
-       super(key: key);
+  });
 
   /// Whether the icon is in an expanded state.
   ///
@@ -52,7 +49,7 @@ class ExpandIcon extends StatefulWidget {
 
   /// The size of the icon.
   ///
-  /// This property must not be null. It defaults to 24.0.
+  /// Defaults to 24.
   final double size;
 
   /// The callback triggered when the icon is pressed and the state changes
@@ -64,10 +61,10 @@ class ExpandIcon extends StatefulWidget {
   /// The padding around the icon. The entire padded icon will react to input
   /// gestures.
   ///
-  /// This property must not be null. It defaults to 8.0 padding on all sides.
+  /// Defaults to a padding of 8 on all sides.
   final EdgeInsetsGeometry padding;
 
-
+  /// {@template flutter.material.ExpandIcon.color}
   /// The color of the icon.
   ///
   /// Defaults to [Colors.black54] when the theme's
@@ -75,6 +72,7 @@ class ExpandIcon extends StatefulWidget {
   /// [Colors.white60] when it is [Brightness.dark]. This adheres to the
   /// Material Design specifications for [icons](https://material.io/design/iconography/system-icons.html#color)
   /// and for [dark theme](https://material.io/design/color/dark-theme.html#ui-application)
+  /// {@endtemplate}
   final Color? color;
 
   /// The color of the icon when it is disabled,
@@ -97,7 +95,7 @@ class ExpandIcon extends StatefulWidget {
   final Color? expandedColor;
 
   @override
-  _ExpandIconState createState() => _ExpandIconState();
+  State<ExpandIcon> createState() => _ExpandIconState();
 }
 
 class _ExpandIconState extends State<ExpandIcon> with SingleTickerProviderStateMixin {
@@ -137,8 +135,7 @@ class _ExpandIconState extends State<ExpandIcon> with SingleTickerProviderStateM
   }
 
   void _handlePressed() {
-    if (widget.onPressed != null)
-      widget.onPressed!(widget.isExpanded);
+    widget.onPressed?.call(widget.isExpanded);
   }
 
   /// Default icon colors and opacities for when [Theme.brightness] is set to
@@ -155,12 +152,10 @@ class _ExpandIconState extends State<ExpandIcon> with SingleTickerProviderStateM
       return widget.color!;
     }
 
-    switch(Theme.of(context).brightness) {
-      case Brightness.light:
-        return Colors.black54;
-      case Brightness.dark:
-        return Colors.white60;
-    }
+    return switch (Theme.of(context).brightness) {
+      Brightness.light => Colors.black54,
+      Brightness.dark  => Colors.white60,
+    };
   }
 
   @override

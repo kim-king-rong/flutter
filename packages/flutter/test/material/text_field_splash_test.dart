@@ -5,37 +5,24 @@
 import 'package:flutter/gestures.dart' show kPressTimeout;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter/rendering.dart';
 
 bool confirmCalled = false;
 bool cancelCalled = false;
 
 class TestInkSplash extends InkSplash {
   TestInkSplash({
-    required MaterialInkController controller,
-    required RenderBox referenceBox,
-    Offset? position,
-    required Color color,
-    bool containedInkWell = false,
-    RectCallback? rectCallback,
-    BorderRadius? borderRadius,
-    ShapeBorder? customBorder,
-    double? radius,
-    VoidCallback? onRemoved,
-    required TextDirection textDirection,
-  }) : super(
-    controller: controller,
-    referenceBox: referenceBox,
-    position: position,
-    color: color,
-    containedInkWell: containedInkWell,
-    rectCallback: rectCallback,
-    borderRadius: borderRadius,
-    customBorder: customBorder,
-    radius: radius,
-    onRemoved: onRemoved,
-    textDirection: textDirection,
-  );
+    required super.controller,
+    required super.referenceBox,
+    super.position,
+    required super.color,
+    super.containedInkWell,
+    super.rectCallback,
+    super.borderRadius,
+    super.customBorder,
+    super.radius,
+    super.onRemoved,
+    required super.textDirection,
+  });
 
   @override
   void confirm() {

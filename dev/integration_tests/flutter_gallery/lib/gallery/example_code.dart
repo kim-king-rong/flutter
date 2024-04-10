@@ -2,8 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// Note: This code is not runnable, it contains code snippets displayed in the
-// gallery.
+// This code is not runnable, it contains code snippets displayed in the Gallery.
 
 import 'package:flutter/material.dart';
 
@@ -26,8 +25,8 @@ ElevatedButton(
 // Buttons are disabled when onPressed isn't
 // specified or is null.
 const ElevatedButton(
-  child: Text('BUTTON TITLE'),
   onPressed: null,
+  child: Text('BUTTON TITLE'),
 );
 
 // Create a button with an icon and a
@@ -54,8 +53,8 @@ OutlinedButton(
 // Buttons are disabled when onPressed isn't
 // specified or is null.
 const OutlinedButton(
-  child: Text('BUTTON TITLE'),
   onPressed: null,
+  child: Text('BUTTON TITLE'),
 );
 
 // Create a button with an icon and a
@@ -82,8 +81,8 @@ TextButton(
 // Buttons are disabled when onPressed isn't
 // specified or is null.
 const TextButton(
-  child: Text('BUTTON TITLE'),
   onPressed: null,
+  child: Text('BUTTON TITLE'),
 );
 // END
 
@@ -99,8 +98,9 @@ DropdownButton<String>(
     // null indicates the user didn't select a
     // new value.
     setState(() {
-      if (newValue != null)
+      if (newValue != null) {
         dropdownValue = newValue;
+      }
     });
   },
   items: <String>['One', 'Two', 'Free', 'Four']
@@ -116,7 +116,7 @@ DropdownButton<String>(
 
 // START buttons_icon
 // Member variable holding toggle value.
-late bool value;
+late bool value = true;
 
 // Toggleable icon button.
 IconButton(
@@ -136,8 +136,8 @@ Scaffold(
     title: const Text('Demo'),
   ),
   floatingActionButton: const FloatingActionButton(
-    child: Icon(Icons.add),
     onPressed: null,
+    child: Icon(Icons.add),
   ),
 );
 // END
@@ -253,7 +253,6 @@ class GridLists {
 // loaded from the web.
 GridView.count(
   crossAxisCount: 3,
-  childAspectRatio: 1.0,
   padding: const EdgeInsets.all(4.0),
   mainAxisSpacing: 4.0,
   crossAxisSpacing: 4.0,

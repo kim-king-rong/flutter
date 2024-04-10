@@ -152,7 +152,7 @@
 ///    on flutter.dev.
 ///  * [Animations tutorial](https://flutter.dev/docs/development/ui/animations/tutorial)
 ///    on flutter.dev.
-///  * [Sample app](https://github.com/flutter/samples/tree/master/animations),
+///  * [Sample app](https://github.com/flutter/samples/tree/main/animations),
 ///    which showcases Flutter's animation features.
 ///  * [ImplicitlyAnimatedWidget] and its subclasses, which are [Widget]s that
 ///    implicitly animate changes to their properties.
@@ -160,8 +160,12 @@
 ///    explicit [Animation] to animate their properties.
 library animation;
 
+// AnimationController can throw TickerCanceled
+export 'package:flutter/scheduler.dart' show TickerCanceled;
+
 export 'src/animation/animation.dart';
 export 'src/animation/animation_controller.dart';
+export 'src/animation/animation_style.dart';
 export 'src/animation/animations.dart';
 export 'src/animation/curves.dart';
 export 'src/animation/listener_helpers.dart';

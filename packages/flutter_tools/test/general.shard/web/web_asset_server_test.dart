@@ -20,14 +20,13 @@ const List<int> kTransparentImage = <int>[
 ];
 
 final Platform platform = FakePlatform(
-  operatingSystem: 'linux',
   environment: <String, String>{
-    'HOME': '/'
+    'HOME': '/',
   },
 );
 
 void main() {
-  FileSystem fileSystem;
+  late FileSystem fileSystem;
 
   setUp(() {
     fileSystem = MemoryFileSystem.test();
@@ -77,7 +76,7 @@ void main() {
       .handle(Request('GET', Uri.parse('http://localhost:8080/assets/foo.js')));
 
     expect(response.headers, <String, String>{
-      'Content-Type': 'application/javascript',
+      'Content-Type': 'text/javascript',
       'content-length': '18',
     });
   });

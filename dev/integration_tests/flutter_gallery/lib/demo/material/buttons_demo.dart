@@ -46,10 +46,12 @@ const String _actionText =
 const String _actionCode = 'buttons_action';
 
 class ButtonsDemo extends StatefulWidget {
+  const ButtonsDemo({super.key});
+
   static const String routeName = '/material/buttons';
 
   @override
-  _ButtonsDemoState createState() => _ButtonsDemoState();
+  State<ButtonsDemo> createState() => _ButtonsDemoState();
 }
 
 class _ButtonsDemoState extends State<ButtonsDemo> {
@@ -63,42 +65,42 @@ class _ButtonsDemoState extends State<ButtonsDemo> {
         description: _elevatedText,
         demoWidget: buildElevatedButton(_buttonShape),
         exampleCodeTag: _elevatedCode,
-        documentationUrl: 'https://docs.flutter.io/flutter/material/ElevatedButton-class.html',
+        documentationUrl: 'https://api.flutter.dev/flutter/material/ElevatedButton-class.html',
       ),
       ComponentDemoTabData(
         tabName: 'TEXT',
         description: _textText,
         demoWidget: buildTextButton(_buttonShape),
         exampleCodeTag: _textCode,
-        documentationUrl: 'https://docs.flutter.io/flutter/material/TextButton-class.html',
+        documentationUrl: 'https://api.flutter.dev/flutter/material/TextButton-class.html',
       ),
       ComponentDemoTabData(
         tabName: 'OUTLINED',
         description: _outlinedText,
         demoWidget: buildOutlinedButton(_buttonShape),
         exampleCodeTag: _outlinedCode,
-        documentationUrl: 'https://docs.flutter.io/flutter/material/OutlinedButton-class.html',
+        documentationUrl: 'https://api.flutter.dev/flutter/material/OutlinedButton-class.html',
       ),
       ComponentDemoTabData(
         tabName: 'DROPDOWN',
         description: _dropdownText,
         demoWidget: buildDropdownButton(),
         exampleCodeTag: _dropdownCode,
-        documentationUrl: 'https://docs.flutter.io/flutter/material/DropdownButton-class.html',
+        documentationUrl: 'https://api.flutter.dev/flutter/material/DropdownButton-class.html',
       ),
       ComponentDemoTabData(
         tabName: 'ICON',
         description: _iconText,
         demoWidget: buildIconButton(),
         exampleCodeTag: _iconCode,
-        documentationUrl: 'https://docs.flutter.io/flutter/material/IconButton-class.html',
+        documentationUrl: 'https://api.flutter.dev/flutter/material/IconButton-class.html',
       ),
       ComponentDemoTabData(
         tabName: 'ACTION',
         description: _actionText,
         demoWidget: buildActionButton(),
         exampleCodeTag: _actionCode,
-        documentationUrl: 'https://docs.flutter.io/flutter/material/FloatingActionButton-class.html',
+        documentationUrl: 'https://api.flutter.dev/flutter/material/FloatingActionButton-class.html',
       ),
     ];
 
@@ -125,8 +127,9 @@ class _ButtonsDemoState extends State<ButtonsDemo> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          ButtonBar(
-            mainAxisSize: MainAxisSize.min,
+          const SizedBox(height: 2),
+          OverflowBar(
+            spacing: 8,
             children: <Widget>[
               ElevatedButton(
                 style: style,
@@ -136,13 +139,14 @@ class _ButtonsDemoState extends State<ButtonsDemo> {
                 },
               ),
               const ElevatedButton(
-                child: Text('DISABLED', semanticsLabel: 'DISABLED BUTTON 1'),
                 onPressed: null,
+                child: Text('DISABLED', semanticsLabel: 'DISABLED BUTTON 1'),
               ),
             ],
           ),
-          ButtonBar(
-            mainAxisSize: MainAxisSize.min,
+          const SizedBox(height: 16),
+          OverflowBar(
+            spacing: 8,
             children: <Widget>[
               ElevatedButton.icon(
                 style: style,
@@ -172,8 +176,9 @@ class _ButtonsDemoState extends State<ButtonsDemo> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          ButtonBar(
-            mainAxisSize: MainAxisSize.min,
+          const SizedBox(height: 2),
+          OverflowBar(
+            spacing: 8,
             children: <Widget>[
               TextButton(
                 style: style,
@@ -183,13 +188,13 @@ class _ButtonsDemoState extends State<ButtonsDemo> {
                 },
               ),
               const TextButton(
-                child: Text('DISABLED', semanticsLabel: 'DISABLED BUTTON 3',),
                 onPressed: null,
+                child: Text('DISABLED', semanticsLabel: 'DISABLED BUTTON 3',),
               ),
             ],
           ),
-          ButtonBar(
-            mainAxisSize: MainAxisSize.min,
+          OverflowBar(
+            spacing: 8,
             children: <Widget>[
               TextButton.icon(
                 style: style,
@@ -219,8 +224,9 @@ class _ButtonsDemoState extends State<ButtonsDemo> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          ButtonBar(
-            mainAxisSize: MainAxisSize.min,
+          const SizedBox(height: 2),
+          OverflowBar(
+            spacing: 8,
             children: <Widget>[
               OutlinedButton(
                 style: style,
@@ -231,13 +237,14 @@ class _ButtonsDemoState extends State<ButtonsDemo> {
               ),
               OutlinedButton(
                 style: style,
-                child: const Text('DISABLED', semanticsLabel: 'DISABLED BUTTON 5'),
                 onPressed: null,
+                child: const Text('DISABLED', semanticsLabel: 'DISABLED BUTTON 5'),
               ),
             ],
           ),
-          ButtonBar(
-            mainAxisSize: MainAxisSize.min,
+          const SizedBox(height: 16),
+          OverflowBar(
+            spacing: 8,
             children: <Widget>[
               OutlinedButton.icon(
                 style: style,
@@ -268,7 +275,6 @@ class _ButtonsDemoState extends State<ButtonsDemo> {
     return Padding(
       padding: const EdgeInsets.all(24.0),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.start,
         children: <Widget>[
           ListTile(
             title: const Text('Simple dropdown:'),
@@ -374,11 +380,11 @@ class _ButtonsDemoState extends State<ButtonsDemo> {
     return Align(
       alignment: const Alignment(0.0, -0.2),
       child: FloatingActionButton(
+        tooltip: 'floating action button',
         child: const Icon(Icons.add),
         onPressed: () {
           // Perform some action
         },
-        tooltip: 'floating action button',
       ),
     );
   }

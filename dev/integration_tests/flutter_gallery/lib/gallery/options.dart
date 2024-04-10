@@ -57,8 +57,9 @@ class GalleryOptions {
 
   @override
   bool operator ==(Object other) {
-    if (other.runtimeType != runtimeType)
+    if (other.runtimeType != runtimeType) {
       return false;
+    }
     return other is GalleryOptions
         && other.themeMode == themeMode
         && other.textScaleFactor == textScaleFactor
@@ -71,7 +72,7 @@ class GalleryOptions {
   }
 
   @override
-  int get hashCode => hashValues(
+  int get hashCode => Object.hash(
     themeMode,
     textScaleFactor,
     visualDensity,
@@ -93,13 +94,13 @@ const double _kItemHeight = 48.0;
 const EdgeInsetsDirectional _kItemPadding = EdgeInsetsDirectional.only(start: 56.0);
 
 class _OptionsItem extends StatelessWidget {
-  const _OptionsItem({ Key? key, this.child }) : super(key: key);
+  const _OptionsItem({ this.child });
 
   final Widget? child;
 
   @override
   Widget build(BuildContext context) {
-    final double textScaleFactor = MediaQuery.textScaleFactorOf(context);
+    final double textScaleFactor = MediaQuery.textScalerOf(context).textScaleFactor;
 
     return MergeSemantics(
       child: Container(
@@ -167,7 +168,7 @@ class _ActionItem extends StatelessWidget {
 }
 
 class _TextButton extends StatelessWidget {
-  const _TextButton({ Key? key, this.onPressed, this.child }) : super(key: key);
+  const _TextButton({ this.onPressed, this.child });
 
   final VoidCallback? onPressed;
   final Widget? child;
@@ -177,8 +178,8 @@ class _TextButton extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
     return TextButton(
       style: TextButton.styleFrom(
-        primary: theme.colorScheme.onPrimary,
-        textStyle: theme.textTheme.subtitle1,
+        foregroundColor: theme.colorScheme.onPrimary,
+        textStyle: theme.textTheme.titleMedium,
         padding: EdgeInsets.zero,
       ),
       onPressed: onPressed,
@@ -197,14 +198,14 @@ class _Heading extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
     return _OptionsItem(
       child: DefaultTextStyle(
-        style: theme.textTheme.headline6!.copyWith(
+        style: theme.textTheme.titleLarge!.copyWith(
           fontFamily: 'GoogleSans',
           color: theme.colorScheme.onPrimary,
           fontWeight: FontWeight.w700,
         ),
         child: Semantics(
-          child: Text(text),
           header: true,
+          child: Text(text),
         ),
       ),
     );
@@ -235,7 +236,7 @@ class _ThemeModeItem extends StatelessWidget {
                 const Text('Theme'),
                 Text(
                   modeLabels[options!.themeMode!]!,
-                  style: Theme.of(context).primaryTextTheme.bodyText2,
+                  style: Theme.of(context).primaryTextTheme.bodyMedium,
                 ),
               ],
             ),
@@ -282,7 +283,7 @@ class _TextScaleFactorItem extends StatelessWidget {
                 const Text('Text size'),
                 Text(
                   options!.textScaleFactor!.label,
-                  style: Theme.of(context).primaryTextTheme.bodyText2,
+                  style: Theme.of(context).primaryTextTheme.bodyMedium,
                 ),
               ],
             ),
@@ -328,7 +329,7 @@ class _VisualDensityItem extends StatelessWidget {
                 const Text('Visual density'),
                 Text(
                   options!.visualDensity!.label,
-                  style: Theme.of(context).primaryTextTheme.bodyText2,
+                  style: Theme.of(context).primaryTextTheme.bodyMedium,
                 ),
               ],
             ),
@@ -408,24 +409,15 @@ class _PlatformItem extends StatelessWidget {
   final GalleryOptions? options;
   final ValueChanged<GalleryOptions>? onOptionsChanged;
 
-  String? _platformLabel(TargetPlatform? platform) {
-    switch(platform) {
-      case TargetPlatform.android:
-        return 'Mountain View';
-      case TargetPlatform.fuchsia:
-        return 'Fuchsia';
-      case TargetPlatform.iOS:
-        return 'Cupertino';
-      case TargetPlatform.linux:
-        return 'Material Desktop (linux)';
-      case TargetPlatform.macOS:
-        return 'Material Desktop (macOS)';
-      case TargetPlatform.windows:
-        return 'Material Desktop (Windows)';
-      default:
-        assert(false);
-        return null;
-    }
+  String _platformLabel(TargetPlatform platform) {
+    return switch (platform) {
+      TargetPlatform.android => 'Mountain View',
+      TargetPlatform.fuchsia => 'Fuchsia',
+      TargetPlatform.iOS     => 'Cupertino',
+      TargetPlatform.linux   => 'Material Desktop (linux)',
+      TargetPlatform.macOS   => 'Material Desktop (macOS)',
+      TargetPlatform.windows => 'Material Desktop (Windows)',
+    };
   }
 
   @override
@@ -439,8 +431,8 @@ class _PlatformItem extends StatelessWidget {
               children: <Widget>[
                 const Text('Platform mechanics'),
                  Text(
-                   _platformLabel(options!.platform)!,
-                   style: Theme.of(context).primaryTextTheme.bodyText2,
+                   _platformLabel(options!.platform!),
+                   style: Theme.of(context).primaryTextTheme.bodyMedium,
                  ),
               ],
             ),
@@ -452,7 +444,7 @@ class _PlatformItem extends StatelessWidget {
               return TargetPlatform.values.map((TargetPlatform platform) {
                 return PopupMenuItem<TargetPlatform>(
                   value: platform,
-                  child: Text(_platformLabel(platform)!),
+                  child: Text(_platformLabel(platform)),
                 );
               }).toList();
             },
@@ -470,11 +462,11 @@ class _PlatformItem extends StatelessWidget {
 
 class GalleryOptionsPage extends StatelessWidget {
   const GalleryOptionsPage({
-    Key? key,
+    super.key,
     this.options,
     this.onOptionsChanged,
     this.onSendFeedback,
-  }) : super(key: key);
+  });
 
   final GalleryOptions? options;
   final ValueChanged<GalleryOptions>? onOptionsChanged;
@@ -483,8 +475,9 @@ class GalleryOptionsPage extends StatelessWidget {
   List<Widget> _enabledDiagnosticItems() {
     // Boolean showFoo options with a value of null: don't display
     // the showFoo option at all.
-    if (options == null)
+    if (options == null) {
       return const <Widget>[];
+    }
 
     return <Widget>[
       const Divider(),
@@ -518,7 +511,7 @@ class GalleryOptionsPage extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
 
     return DefaultTextStyle(
-      style: theme.primaryTextTheme.subtitle1!,
+      style: theme.primaryTextTheme.titleMedium!,
       child: ListView(
         padding: const EdgeInsets.only(bottom: 124.0),
         children: <Widget>[

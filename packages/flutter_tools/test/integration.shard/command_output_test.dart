@@ -11,12 +11,14 @@ import 'package:flutter_tools/src/features.dart';
 import '../src/common.dart';
 import 'test_utils.dart';
 
+// This test file does not use [getLocalEngineArguments] because it is testing
+// command output and not using cached artifacts.
+
 void main() {
   testWithoutContext('All development tools and deprecated commands are hidden and help text is not verbose', () async {
     final String flutterBin = fileSystem.path.join(getFlutterRoot(), 'bin', 'flutter');
     final ProcessResult result = await processManager.run(<String>[
       flutterBin,
-      ...getLocalEngineArguments(),
       '-h',
       '-v',
     ]);
@@ -35,7 +37,6 @@ void main() {
     final String flutterBin = fileSystem.path.join(getFlutterRoot(), 'bin', 'flutter');
     final ProcessResult result = await processManager.run(<String>[
       flutterBin,
-      ...getLocalEngineArguments(),
       '-?',
     ]);
 
@@ -50,7 +51,6 @@ void main() {
     final String flutterBin = fileSystem.path.join(getFlutterRoot(), 'bin', 'flutter');
     final ProcessResult result = await processManager.run(<String>[
       flutterBin,
-      ...getLocalEngineArguments(),
       'doctor',
       '-v',
     ]);
@@ -63,26 +63,25 @@ void main() {
     final String flutterBin = fileSystem.path.join(getFlutterRoot(), 'bin', 'flutter');
     final ProcessResult result = await processManager.run(<String>[
       flutterBin,
-      ...getLocalEngineArguments(),
       'doctor',
       '-vv',
     ]);
 
     // Check for message only printed in verbose mode.
-    expect(result.stdout, contains('Running shutdown hooks'));
+    expect(result.stdout, contains('Shutdown hooks complete'));
   });
 
-  testWithoutContext('flutter config contains all features', () async {
+  testWithoutContext('flutter config --list contains all features', () async {
     final String flutterBin = fileSystem.path.join(getFlutterRoot(), 'bin', 'flutter');
     final ProcessResult result = await processManager.run(<String>[
       flutterBin,
-      ...getLocalEngineArguments(),
       'config',
+      '--list'
     ]);
 
     // contains all of the experiments in features.dart
-    expect(result.stdout.split('\n'), containsAll(<Matcher>[
-      for (final Feature feature in allFeatures)
+    expect((result.stdout as String).split('\n'), containsAll(<Matcher>[
+      for (final Feature feature in allConfigurableFeatures)
         contains(feature.configSetting),
     ]));
   });
@@ -106,7 +105,6 @@ void main() {
       final String flutterBin = fileSystem.path.join(getFlutterRoot(), 'bin', 'flutter');
       final ProcessResult result = await processManager.run(<String>[
         flutterBin,
-        ...getLocalEngineArguments(),
         'run',
         '--show-test-device', // ensure command can fail to run and hit injection of correct logger.
         '--machine',
@@ -123,7 +121,6 @@ void main() {
     final String flutterBin = fileSystem.path.join(getFlutterRoot(), 'bin', 'flutter');
     final ProcessResult result = await processManager.run(<String>[
       flutterBin,
-      ...getLocalEngineArguments(),
       'attach',
       '--machine',
       '-v',
@@ -136,35 +133,59 @@ void main() {
     final String flutterBin = fileSystem.path.join(getFlutterRoot(), 'bin', 'flutter');
     final ProcessResult result = await processManager.run(<String>[
       flutterBin,
-      ...getLocalEngineArguments(),
       '--version',
       '--machine',
     ]);
 
-    final Map<String, Object> versionInfo = json.decode(result.stdout
+    final Map<String, Object?> versionInfo = json.decode(result.stdout
       .toString()
       .replaceAll('Building flutter tool...', '')
       .replaceAll('Waiting for another flutter command to release the startup lock...', '')
-      .trim()) as Map<String, Object>;
+      .trim()) as Map<String, Object?>;
 
     expect(versionInfo, containsPair('flutterRoot', isNotNull));
   });
 
-  testWithoutContext('A tool exit is thrown for an invalid debug-uri in flutter attach', () async {
+  testWithoutContext('A tool exit is thrown for an invalid debug-url in flutter attach', () async {
+    // This test is almost exactly like the next one; update them together please.
     final String flutterBin = fileSystem.path.join(getFlutterRoot(), 'bin', 'flutter');
     final String helloWorld = fileSystem.path.join(getFlutterRoot(), 'examples', 'hello_world');
     final ProcessResult result = await processManager.run(<String>[
       flutterBin,
-      ...getLocalEngineArguments(),
       '--show-test-device',
       'attach',
       '-d',
       'flutter-tester',
-      '--debug-uri=http://127.0.0.1:3333*/',
+      '--debug-url=http://127.0.0.1:3333*/',
     ], workingDirectory: helloWorld);
 
-    expect(result.exitCode, 1);
-    expect(result.stderr, contains('Invalid `--debug-uri`: http://127.0.0.1:3333*/'));
+    expect(
+      result,
+      const ProcessResultMatcher(exitCode: 1, stderrPattern: 'Invalid `--debug-url`: http://127.0.0.1:3333*/'),
+    );
+  });
+
+  testWithoutContext('--debug-uri is an alias for --debug-url', () async {
+    // This text is exactly the same as the previous one but with a "l" turned to an "i".
+    final String flutterBin = fileSystem.path.join(getFlutterRoot(), 'bin', 'flutter');
+    final String helloWorld = fileSystem.path.join(getFlutterRoot(), 'examples', 'hello_world');
+    final ProcessResult result = await processManager.run(<String>[
+      flutterBin,
+      '--show-test-device',
+      'attach',
+      '-d',
+      'flutter-tester',
+      '--debug-uri=http://127.0.0.1:3333*/', // "uri" not "url"
+    ], workingDirectory: helloWorld);
+
+    expect(
+      result,
+      const ProcessResultMatcher(
+        exitCode: 1,
+        // _"url"_ not "uri"!
+        stderrPattern: 'Invalid `--debug-url`: http://127.0.0.1:3333*/',
+      ),
+    );
   });
 
   testWithoutContext('will load bootstrap script before starting', () async {
@@ -181,7 +202,6 @@ void main() {
       bootstrap.writeAsStringSync('echo TESTING 1 2 3');
       final ProcessResult result = await processManager.run(<String>[
         flutterBin,
-        ...getLocalEngineArguments(),
       ]);
 
       expect(result.stdout, contains('TESTING 1 2 3'));
@@ -195,14 +215,15 @@ void main() {
     final String helloWorld = fileSystem.path.join(getFlutterRoot(), 'examples', 'hello_world');
     final ProcessResult result = await processManager.run(<String>[
       flutterBin,
-      ...getLocalEngineArguments(),
       'build',
       'apk',
       '--bundle-sksl-path=foo/bar/baz.json', // This file does not exist.
     ], workingDirectory: helloWorld);
 
-    expect(result.exitCode, 1);
-    expect(result.stderr, contains('No SkSL shader bundle found at foo/bar/baz.json'));
+    expect(result, const ProcessResultMatcher(
+      exitCode: 1,
+      stderrPattern: 'No SkSL shader bundle found at foo/bar/baz.json'),
+    );
   });
 
   testWithoutContext('flutter attach does not support --release', () async {
@@ -210,7 +231,6 @@ void main() {
     final String helloWorld = fileSystem.path.join(getFlutterRoot(), 'examples', 'hello_world');
     final ProcessResult result = await processManager.run(<String>[
       flutterBin,
-      ...getLocalEngineArguments(),
       '--show-test-device',
       'attach',
       '--release',
@@ -218,5 +238,37 @@ void main() {
 
     expect(result.exitCode, isNot(0));
     expect(result.stderr, contains('Could not find an option named "release"'));
+  });
+
+  testWithoutContext('flutter can report crashes', () async {
+    final String flutterBin = fileSystem.path.join(getFlutterRoot(), 'bin', 'flutter');
+    final ProcessResult result = await processManager.run(<String>[
+      flutterBin,
+      'update-packages',
+      '--crash',
+    ], environment: <String, String>{
+      'BOT': 'false',
+    });
+
+    expect(result.exitCode, isNot(0));
+    expect(result.stderr, contains(
+      'Oops; flutter has exited unexpectedly: "Bad state: test crash please ignore.".\n'
+      'A crash report has been written to',
+    ));
+  });
+
+  testWithoutContext('flutter supports trailing args', () async {
+    final String flutterBin = fileSystem.path.join(getFlutterRoot(), 'bin', 'flutter');
+    final String helloWorld = fileSystem.path.join(getFlutterRoot(), 'examples', 'hello_world');
+    final ProcessResult result = await processManager.run(<String>[
+      flutterBin,
+      'test',
+      'test/hello_test.dart',
+      '-r',
+      'json',
+    ], workingDirectory: helloWorld);
+
+    expect(result, const ProcessResultMatcher());
+    expect(result.stderr, isEmpty);
   });
 }

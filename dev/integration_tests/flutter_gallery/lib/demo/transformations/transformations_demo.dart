@@ -9,11 +9,12 @@ import 'transformations_demo_edit_board_point.dart';
 import 'transformations_demo_gesture_transformable.dart';
 
 class TransformationsDemo extends StatefulWidget {
-  const TransformationsDemo({ Key? key }) : super(key: key);
+  const TransformationsDemo({ super.key });
 
   static const String routeName = '/transformations';
 
-  @override _TransformationsDemoState createState() => _TransformationsDemoState();
+  @override
+  State<TransformationsDemo> createState() => _TransformationsDemoState();
 }
 class _TransformationsDemoState extends State<TransformationsDemo> {
   // The radius of a hexagon tile in pixels.
@@ -67,9 +68,6 @@ class _TransformationsDemoState extends State<TransformationsDemo> {
                 _reset = false;
               });
             },
-            child: CustomPaint(
-              painter: painter,
-            ),
             boundaryRect: Rect.fromLTWH(
               -visibleSize.width / 2,
               -visibleSize.height / 2,
@@ -82,6 +80,9 @@ class _TransformationsDemoState extends State<TransformationsDemo> {
             initialTranslation: Offset(size.width / 2, size.height / 2),
             onTapUp: _onTapUp,
             size: size,
+            child: CustomPaint(
+              painter: painter,
+            ),
           );
         },
       ),
@@ -92,10 +93,10 @@ class _TransformationsDemoState extends State<TransformationsDemo> {
   Widget get instructionDialog {
     return AlertDialog(
       title: const Text('2D Transformations'),
-      content: Column(
+      content: const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
-        children: const <Widget>[
+        children: <Widget>[
           Text('Tap to edit hex tiles, and use gestures to move around the scene:\n'),
           Text('- Drag to pan.'),
           Text('- Pinch to zoom.'),
@@ -181,6 +182,7 @@ class BoardPainter extends CustomPainter {
       );
       final Vertices vertices = board!.getVerticesForBoardPoint(boardPoint, color);
       canvas.drawVertices(vertices, BlendMode.color, Paint());
+      vertices.dispose();
     }
 
     board!.forEach(drawBoardPoint);

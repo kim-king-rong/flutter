@@ -10,6 +10,7 @@ import 'package:process/process.dart';
 import 'android/android_emulator.dart';
 import 'android/android_sdk.dart';
 import 'android/android_workflow.dart';
+import 'android/java.dart';
 import 'base/context.dart';
 import 'base/file_system.dart';
 import 'base/logger.dart';
@@ -17,17 +18,19 @@ import 'base/process.dart';
 import 'device.dart';
 import 'ios/ios_emulators.dart';
 
-EmulatorManager get emulatorManager => context.get<EmulatorManager>();
+EmulatorManager? get emulatorManager => context.get<EmulatorManager>();
 
 /// A class to get all available emulators.
 class EmulatorManager {
   EmulatorManager({
-    @required AndroidSdk androidSdk,
-    @required Logger logger,
-    @required ProcessManager processManager,
-    @required AndroidWorkflow androidWorkflow,
-    @required FileSystem fileSystem,
-  }) : _androidSdk = androidSdk,
+    required Java? java,
+    AndroidSdk? androidSdk,
+    required Logger logger,
+    required ProcessManager processManager,
+    required AndroidWorkflow androidWorkflow,
+    required FileSystem fileSystem,
+  }) : _java = java,
+       _androidSdk = androidSdk,
        _processUtils = ProcessUtils(logger: logger, processManager: processManager),
        _androidEmulators = AndroidEmulators(
         androidSdk: androidSdk,
@@ -39,7 +42,8 @@ class EmulatorManager {
     _emulatorDiscoverers.add(_androidEmulators);
   }
 
-  final AndroidSdk _androidSdk;
+  final Java? _java;
+  final AndroidSdk? _androidSdk;
   final AndroidEmulators _androidEmulators;
   final ProcessUtils _processUtils;
 
@@ -53,14 +57,19 @@ class EmulatorManager {
     final List<Emulator> emulators = await getAllAvailableEmulators();
     searchText = searchText.toLowerCase();
     bool exactlyMatchesEmulatorId(Emulator emulator) =>
-        emulator.id?.toLowerCase() == searchText ||
-        emulator.name?.toLowerCase() == searchText;
+        emulator.id.toLowerCase() == searchText ||
+        emulator.name.toLowerCase() == searchText;
     bool startsWithEmulatorId(Emulator emulator) =>
-        emulator.id?.toLowerCase()?.startsWith(searchText) == true ||
-        emulator.name?.toLowerCase()?.startsWith(searchText) == true;
+        emulator.id.toLowerCase().startsWith(searchText) ||
+        emulator.name.toLowerCase().startsWith(searchText);
 
-    final Emulator exactMatch =
-        emulators.firstWhere(exactlyMatchesEmulatorId, orElse: () => null);
+    Emulator? exactMatch;
+    for (final Emulator emulator in emulators) {
+      if (exactlyMatchesEmulatorId(emulator)) {
+        exactMatch = emulator;
+        break;
+      }
+    }
     if (exactMatch != null) {
       return <Emulator>[exactMatch];
     }
@@ -83,7 +92,7 @@ class EmulatorManager {
   }
 
   /// Return the list of all available emulators.
-  Future<CreateEmulatorResult> createEmulator({ String name }) async {
+  Future<CreateEmulatorResult> createEmulator({ String? name }) async {
     if (name == null || name.isEmpty) {
       const String autoName = 'flutter_emulator';
       // Don't use getEmulatorsMatching here, as it will only return one
@@ -100,21 +109,23 @@ class EmulatorManager {
         name = '${autoName}_${++suffix}';
       }
     }
-    if (!_androidEmulators.canLaunchAnything) {
-      return CreateEmulatorResult(name,
+    final String emulatorName = name!;
+    final String? avdManagerPath = _androidSdk?.avdManagerPath;
+    if (avdManagerPath == null || !_androidEmulators.canLaunchAnything) {
+      return CreateEmulatorResult(emulatorName,
         success: false, error: 'avdmanager is missing from the Android SDK'
       );
     }
 
-    final String device = await _getPreferredAvailableDevice();
+    final String? device = await _getPreferredAvailableDevice(avdManagerPath);
     if (device == null) {
-      return CreateEmulatorResult(name,
+      return CreateEmulatorResult(emulatorName,
           success: false, error: 'No device definitions are available');
     }
 
-    final String sdkId = await _getPreferredSdkId();
+    final String? sdkId = await _getPreferredSdkId(avdManagerPath);
     if (sdkId == null) {
-      return CreateEmulatorResult(name,
+      return CreateEmulatorResult(emulatorName,
           success: false,
           error:
               'No suitable Android AVD system images are available. You may need to install these'
@@ -126,7 +137,7 @@ class EmulatorManager {
     // to flutter users. Specifically:
     // - Removes lines that say "null" (!)
     // - Removes lines that tell the user to use '--force' to overwrite emulators
-    String cleanError(String error) {
+    String? cleanError(String? error) {
       if (error == null || error.trim() == '') {
         return null;
       }
@@ -139,16 +150,16 @@ class EmulatorManager {
           .trim();
     }
     final RunResult runResult = await _processUtils.run(<String>[
-      _androidSdk?.avdManagerPath,
+        avdManagerPath,
         'create',
         'avd',
-        '-n', name,
+        '-n', emulatorName,
         '-k', sdkId,
         '-d', device,
-      ], environment: _androidSdk?.sdkManagerEnv,
+      ], environment: _java?.environment,
     );
     return CreateEmulatorResult(
-      name,
+      emulatorName,
       success: runResult.exitCode == 0,
       output: runResult.stdout,
       error: cleanError(runResult.stderr),
@@ -160,15 +171,15 @@ class EmulatorManager {
     'pixel_xl',
   ];
 
-  Future<String> _getPreferredAvailableDevice() async {
+  Future<String?> _getPreferredAvailableDevice(String avdManagerPath) async {
     final List<String> args = <String>[
-      _androidSdk?.avdManagerPath,
+      avdManagerPath,
       'list',
       'device',
       '-c',
     ];
     final RunResult runResult = await _processUtils.run(args,
-        environment: _androidSdk?.sdkManagerEnv);
+        environment: _java?.environment);
     if (runResult.exitCode != 0) {
       return null;
     }
@@ -178,25 +189,27 @@ class EmulatorManager {
         .where((String l) => preferredDevices.contains(l.trim()))
         .toList();
 
-    return preferredDevices.firstWhere(
-      (String d) => availableDevices.contains(d),
-      orElse: () => null,
-    );
+    for (final String device in preferredDevices) {
+      if (availableDevices.contains(device)) {
+        return device;
+      }
+    }
+    return null;
   }
 
   static final RegExp _androidApiVersion = RegExp(r';android-(\d+);');
 
-  Future<String> _getPreferredSdkId() async {
+  Future<String?> _getPreferredSdkId(String avdManagerPath) async {
     // It seems that to get the available list of images, we need to send a
     // request to create without the image and it'll provide us a list :-(
     final List<String> args = <String>[
-      _androidSdk?.avdManagerPath,
+      avdManagerPath,
       'create',
       'avd',
       '-n', 'temp',
     ];
     final RunResult runResult = await _processUtils.run(args,
-        environment: _androidSdk?.sdkManagerEnv);
+        environment: _java?.environment);
 
     // Get the list of IDs that match our criteria
     final List<String> availableIDs = runResult.stderr
@@ -207,7 +220,7 @@ class EmulatorManager {
         .toList();
 
     final List<int> availableApiVersions = availableIDs
-        .map<String>((String id) => _androidApiVersion.firstMatch(id).group(1))
+        .map<String>((String id) => _androidApiVersion.firstMatch(id)!.group(1)!)
         .map<int>((String apiVersion) => int.parse(apiVersion))
         .toList();
 
@@ -218,10 +231,12 @@ class EmulatorManager {
 
     // We're out of preferences, we just have to return the first one with the high
     // API version.
-    return availableIDs.firstWhere(
-      (String id) => id.contains(';android-$apiVersion;'),
-      orElse: () => null,
-    );
+    for (final String id in availableIDs) {
+      if (id.contains(';android-$apiVersion;')) {
+        return id;
+      }
+    }
+    return null;
   }
 
   /// Whether we're capable of listing any emulators given the current environment configuration.
@@ -250,7 +265,7 @@ abstract class Emulator {
   final String id;
   final bool hasConfig;
   String get name;
-  String get manufacturer;
+  String? get manufacturer;
   Category get category;
   PlatformType get platformType;
 
@@ -266,7 +281,7 @@ abstract class Emulator {
         && other.id == id;
   }
 
-  Future<void> launch();
+  Future<void> launch({bool coldBoot});
 
   @override
   String toString() => name;
@@ -276,14 +291,22 @@ abstract class Emulator {
       return <String>[];
     }
 
+    const List<String> tableHeader = <String>[
+      'Id',
+      'Name',
+      'Manufacturer',
+      'Platform',
+    ];
+
     // Extract emulators information
     final List<List<String>> table = <List<String>>[
+      tableHeader,
       for (final Emulator emulator in emulators)
         <String>[
-          emulator.id ?? '',
-          emulator.name ?? '',
+          emulator.id,
+          emulator.name,
           emulator.manufacturer ?? '',
-          emulator.platformType?.toString() ?? '',
+          emulator.platformType.toString(),
         ],
     ];
 
@@ -299,24 +322,27 @@ abstract class Emulator {
     return table
         .map<String>((List<String> row) {
           return indices
-                  .map<String>((int i) => row[i].padRight(widths[i]))
-                  .join(' • ') +
-              ' • ${row.last}';
+            .map<String>((int i) => row[i].padRight(widths[i]))
+            .followedBy(<String>[row.last])
+            .join(' • ');
         })
         .map<String>((String line) => line.replaceAll(whiteSpaceAndDots, ''))
         .toList();
   }
 
   static void printEmulators(List<Emulator> emulators, Logger logger) {
-    descriptions(emulators).forEach(logger.printStatus);
+    final List<String> emulatorDescriptions = descriptions(emulators);
+    // Prints the first description as the table header, followed by a newline.
+    logger.printStatus('${emulatorDescriptions.first}\n');
+    emulatorDescriptions.sublist(1).forEach(logger.printStatus);
   }
 }
 
 class CreateEmulatorResult {
-  CreateEmulatorResult(this.emulatorName, {this.success, this.output, this.error});
+  CreateEmulatorResult(this.emulatorName, {required this.success, this.output, this.error});
 
   final bool success;
   final String emulatorName;
-  final String output;
-  final String error;
+  final String? output;
+  final String? error;
 }

@@ -4,7 +4,7 @@
 
 import 'package:flutter/material.dart';
 
-import 'package:flutter_gallery/demo/shrine/login.dart';
+import 'login.dart';
 
 const Cubic _kAccelerateCurve = Cubic(0.548, 0.0, 0.757, 0.464);
 const Cubic _kDecelerateCurve = Cubic(0.23, 0.94, 0.41, 1.0);
@@ -14,10 +14,9 @@ const double _kPeakVelocityProgress = 0.379146;
 class _TappableWhileStatusIs extends StatefulWidget {
   const _TappableWhileStatusIs(
       this.status, {
-        Key? key,
         this.controller,
         this.child,
-      }) : super(key: key);
+      });
 
   final AnimationController? controller;
   final AnimationStatus status;
@@ -72,10 +71,9 @@ class _TappableWhileStatusIsState extends State<_TappableWhileStatusIs> {
 
 class _FrontLayer extends StatelessWidget {
   const _FrontLayer({
-    Key? key,
     this.onTap,
     this.child,
-  }) : super(key: key);
+  });
 
   final VoidCallback? onTap;
   final Widget? child;
@@ -109,12 +107,11 @@ class _FrontLayer extends StatelessWidget {
 
 class _BackdropTitle extends AnimatedWidget {
   const _BackdropTitle({
-    Key? key,
-    required Animation<double> listenable,
+    required Animation<double> super.listenable,
     this.onPress,
     required this.frontTitle,
     required this.backTitle,
-  }) : super(key: key, listenable: listenable);
+  });
 
   final void Function()? onPress;
   final Widget frontTitle;
@@ -128,7 +125,7 @@ class _BackdropTitle extends AnimatedWidget {
     );
 
     return DefaultTextStyle(
-      style: Theme.of(context).primaryTextTheme.headline6!,
+      style: Theme.of(context).primaryTextTheme.titleLarge!,
       softWrap: false,
       overflow: TextOverflow.ellipsis,
       child: Row(children: <Widget>[
@@ -198,6 +195,7 @@ class _BackdropTitle extends AnimatedWidget {
 /// front or back layer is showing.
 class Backdrop extends StatefulWidget {
   const Backdrop({
+    super.key,
     required this.frontLayer,
     required this.backLayer,
     required this.frontTitle,
@@ -212,7 +210,7 @@ class Backdrop extends StatefulWidget {
   final AnimationController controller;
 
   @override
-  _BackdropState createState() => _BackdropState();
+  State<Backdrop> createState() => _BackdropState();
 }
 
 class _BackdropState extends State<Backdrop> with SingleTickerProviderStateMixin {
@@ -340,7 +338,6 @@ class _BackdropState extends State<Backdrop> with SingleTickerProviderStateMixin
   @override
   Widget build(BuildContext context) {
     final AppBar appBar = AppBar(
-      brightness: Brightness.light,
       elevation: 0.0,
       titleSpacing: 0.0,
       title: _BackdropTitle(
@@ -355,7 +352,7 @@ class _BackdropState extends State<Backdrop> with SingleTickerProviderStateMixin
           onPressed: () {
             Navigator.push<void>(
               context,
-              MaterialPageRoute<void>(builder: (BuildContext context) => LoginPage()),
+              MaterialPageRoute<void>(builder: (BuildContext context) => const LoginPage()),
             );
           },
         ),
@@ -364,7 +361,7 @@ class _BackdropState extends State<Backdrop> with SingleTickerProviderStateMixin
           onPressed: () {
             Navigator.push<void>(
               context,
-              MaterialPageRoute<void>(builder: (BuildContext context) => LoginPage()),
+              MaterialPageRoute<void>(builder: (BuildContext context) => const LoginPage()),
             );
           },
         ),

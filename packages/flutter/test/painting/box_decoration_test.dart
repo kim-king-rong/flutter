@@ -2,12 +2,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/painting.dart';
-
-import '../rendering/mock_canvas.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('BoxDecoration.lerp identical a,b', () {
+    expect(BoxDecoration.lerp(null, null, 0), null);
+    const BoxDecoration decoration = BoxDecoration();
+    expect(identical(BoxDecoration.lerp(decoration, decoration, 0.5), decoration), true);
+  });
+
   test('BoxDecoration with BorderRadiusDirectional', () {
     const BoxDecoration decoration = BoxDecoration(
       color: Color(0xFF000000),
@@ -19,7 +23,7 @@ void main() {
       (Canvas canvas) {
         painter.paint(
           canvas,
-          const Offset(0.0, 0.0),
+          Offset.zero,
           const ImageConfiguration(size: size, textDirection: TextDirection.rtl),
         );
       },
@@ -32,7 +36,7 @@ void main() {
       (Canvas canvas) {
         painter.paint(
           canvas,
-          const Offset(0.0, 0.0),
+          Offset.zero,
           const ImageConfiguration(size: size, textDirection: TextDirection.ltr),
         );
       },
@@ -61,7 +65,7 @@ void main() {
       (Canvas canvas) {
         painter.paint(
           canvas,
-          const Offset(0.0, 0.0),
+          Offset.zero,
           const ImageConfiguration(size: size, textDirection: TextDirection.rtl),
         );
       },
@@ -94,5 +98,18 @@ void main() {
       excludes: const <Offset>[ Offset(40.0, 0.0), Offset(10.0, 10.0), ],
     );
     expect(clipPath, isLookLikeExpectedPath);
+  });
+
+  test('BoxDecorations with different blendModes are not equal', () {
+    // Regression test for https://github.com/flutter/flutter/issues/100754.
+    const BoxDecoration one = BoxDecoration(
+      color: Color(0x00000000),
+      backgroundBlendMode: BlendMode.color,
+    );
+    const BoxDecoration two = BoxDecoration(
+      color: Color(0x00000000),
+      backgroundBlendMode: BlendMode.difference,
+    );
+    expect(one == two, isFalse);
   });
 }

@@ -2,16 +2,33 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+class TestTextInputFormatter extends TextInputFormatter {
+  const TestTextInputFormatter();
+
+  @override
+  void noSuchMethod(Invocation invocation) {
+    super.noSuchMethod(invocation);
+  }
+}
 
 void main() {
   TextEditingValue testOldValue = TextEditingValue.empty;
   TextEditingValue testNewValue = TextEditingValue.empty;
 
+  test('test const constructor', () {
+    const TestTextInputFormatter testValue1 = TestTextInputFormatter();
+    const TestTextInputFormatter testValue2 = TestTextInputFormatter();
+
+    expect(testValue1, same(testValue2));
+  });
+
   test('withFunction wraps formatting function', () {
-    testOldValue = const TextEditingValue();
-    testNewValue = const TextEditingValue();
+    testOldValue = TextEditingValue.empty;
+    testNewValue = TextEditingValue.empty;
 
     late TextEditingValue calledOldValue;
     late TextEditingValue calledNewValue;
@@ -21,7 +38,7 @@ void main() {
         calledOldValue = oldValue;
         calledNewValue = newValue;
         return TextEditingValue.empty;
-      }
+      },
     );
 
     formatterUnderTest.formatEditUpdate(testOldValue, testNewValue);
@@ -63,6 +80,7 @@ void main() {
         const TextEditingValue(text: 'Int* the W*ds'),
       );
 
+      // "Into the Wo|ods|"
       const TextEditingValue selectedIntoTheWoods = TextEditingValue(text: 'Into the Woods', selection: TextSelection(baseOffset: 11, extentOffset: 14));
       expect(
         FilteringTextInputFormatter('o', allow: true, replacementString: '*').formatEditUpdate(testOldValue, selectedIntoTheWoods),
@@ -78,7 +96,7 @@ void main() {
       );
       expect(
         FilteringTextInputFormatter(RegExp('o+'), allow: false, replacementString: '*').formatEditUpdate(testOldValue, selectedIntoTheWoods),
-        const TextEditingValue(text: 'Int* the W**ds', selection: TextSelection(baseOffset: 11, extentOffset: 14)),
+        const TextEditingValue(text: 'Int* the W*ds', selection: TextSelection(baseOffset: 11, extentOffset: 13)),
       );
     });
 
@@ -230,7 +248,6 @@ void main() {
 
     test('test length limiting formatter with zero-length string', () {
       testNewValue = const TextEditingValue(
-        text: '',
         selection: TextSelection(
           baseOffset: 0,
           extentOffset: 0,
@@ -243,7 +260,6 @@ void main() {
 
       // Expecting the empty string.
       expect(actualValue, const TextEditingValue(
-        text: '',
         selection: TextSelection(
           baseOffset: 0,
           extentOffset: 0,
@@ -354,8 +370,6 @@ void main() {
       test('Removes characters from the end', () async {
         const TextEditingValue value = TextEditingValue(
           text: '01234567890',
-          selection: TextSelection.collapsed(offset: -1),
-          composing: TextRange.empty,
         );
         final TextEditingValue truncated = LengthLimitingTextInputFormatter
             .truncate(value, 10);
@@ -369,7 +383,6 @@ void main() {
           // Put the cursor at the end of the overflowing string to test if it
           // ends up at the end of the new string after truncation.
           selection: TextSelection.collapsed(offset: stringOverflowing.length),
-          composing: TextRange.empty,
         );
         final TextEditingValue truncated = LengthLimitingTextInputFormatter
             .truncate(value, 10);
@@ -379,14 +392,13 @@ void main() {
         expect(truncated.selection.extentOffset, stringTruncated.length);
       });
 
-      test('Counts grapheme clustsers as single characters', () async {
+      test('Counts grapheme clusters as single characters', () async {
         const String stringOverflowing = '👨‍👩‍👦01234567890';
         const TextEditingValue value = TextEditingValue(
           text: stringOverflowing,
           // Put the cursor at the end of the overflowing string to test if it
           // ends up at the end of the new string after truncation.
           selection: TextSelection.collapsed(offset: stringOverflowing.length),
-          composing: TextRange.empty,
         );
         final TextEditingValue truncated = LengthLimitingTextInputFormatter
             .truncate(value, 10);
@@ -403,19 +415,15 @@ void main() {
       test('Passes through when under limit', () async {
         const TextEditingValue oldValue = TextEditingValue(
           text: 'aaa',
-          selection: TextSelection.collapsed(offset: -1),
-          composing: TextRange.empty,
         );
         const TextEditingValue newValue = TextEditingValue(
           text: 'aaab',
-          selection: TextSelection.collapsed(offset: -1),
-          composing: TextRange.empty,
         );
         final LengthLimitingTextInputFormatter formatter =
             LengthLimitingTextInputFormatter(maxLength);
         final TextEditingValue formatted = formatter.formatEditUpdate(
           oldValue,
-          newValue
+          newValue,
         );
         expect(formatted.text, newValue.text);
       });
@@ -423,19 +431,15 @@ void main() {
       test('Uses old value when at the limit', () async {
         const TextEditingValue oldValue = TextEditingValue(
           text: 'aaaaaaaaaa',
-          selection: TextSelection.collapsed(offset: -1),
-          composing: TextRange.empty,
         );
         const TextEditingValue newValue = TextEditingValue(
           text: 'aaaaabbbbbaaaaa',
-          selection: TextSelection.collapsed(offset: -1),
-          composing: TextRange.empty,
         );
         final LengthLimitingTextInputFormatter formatter =
             LengthLimitingTextInputFormatter(maxLength);
         final TextEditingValue formatted = formatter.formatEditUpdate(
           oldValue,
-          newValue
+          newValue,
         );
         expect(formatted.text, oldValue.text);
       });
@@ -443,21 +447,39 @@ void main() {
       test('Truncates newValue when oldValue already over limit', () async {
         const TextEditingValue oldValue = TextEditingValue(
           text: 'aaaaaaaaaaaaaaaaaaaa',
-          selection: TextSelection.collapsed(offset: -1),
-          composing: TextRange.empty,
         );
         const TextEditingValue newValue = TextEditingValue(
           text: 'bbbbbbbbbbbbbbbbbbbb',
-          selection: TextSelection.collapsed(offset: -1),
-          composing: TextRange.empty,
         );
         final LengthLimitingTextInputFormatter formatter =
             LengthLimitingTextInputFormatter(maxLength);
         final TextEditingValue formatted = formatter.formatEditUpdate(
           oldValue,
-          newValue
+          newValue,
         );
         expect(formatted.text, 'bbbbbbbbbb');
+      });
+    });
+
+    group('get enforcement from target platform', () {
+      // The enforcement on Web will be always `MaxLengthEnforcement.truncateAfterCompositionEnds`
+
+      test('with TargetPlatform.windows', () async {
+        final MaxLengthEnforcement enforcement = LengthLimitingTextInputFormatter.getDefaultMaxLengthEnforcement(
+          TargetPlatform.windows,
+        );
+        if (kIsWeb) {
+          expect(enforcement, MaxLengthEnforcement.truncateAfterCompositionEnds);
+        } else {
+          expect(enforcement, MaxLengthEnforcement.enforced);
+        }
+      });
+
+      test('with TargetPlatform.macOS', () async {
+        final MaxLengthEnforcement enforcement = LengthLimitingTextInputFormatter.getDefaultMaxLengthEnforcement(
+          TargetPlatform.macOS,
+        );
+        expect(enforcement, MaxLengthEnforcement.truncateAfterCompositionEnds);
       });
     });
   });
@@ -552,8 +574,7 @@ void main() {
 
     final TextInputFormatter formatter =
         FilteringTextInputFormatter.digitsOnly;
-    TextEditingValue formatted = formatter.formatEditUpdate(oldValue,
-        newValue);
+    TextEditingValue formatted = formatter.formatEditUpdate(oldValue, newValue);
 
     // assert that we are passing digits only at the first time
     expect(oldValue.text, equals('123'));
@@ -563,8 +584,7 @@ void main() {
     expect(formatted.selection.baseOffset, equals(6));
 
     // move cursor at the middle of the text and then add the number 9.
-    oldValue = newValue.copyWith(
-        selection: const TextSelection.collapsed(offset: 4));
+    oldValue = newValue.copyWith(selection: const TextSelection.collapsed(offset: 4));
     newValue = oldValue.copyWith(text: '1239456');
 
     formatted = formatter.formatEditUpdate(oldValue, newValue);
@@ -585,8 +605,7 @@ void main() {
 
     final TextInputFormatter formatter =
         FilteringTextInputFormatter.digitsOnly;
-    TextEditingValue formatted = formatter.formatEditUpdate(oldValue,
-        newValue);
+    TextEditingValue formatted = formatter.formatEditUpdate(oldValue, newValue);
 
     // assert that we are passing digits only at the first time
     expect(oldValue.text, equals('123'));
@@ -596,13 +615,255 @@ void main() {
     expect(formatted.selection.baseOffset, equals(6));
 
     // move cursor at the middle of the text and then add the number 9.
-    oldValue = newValue.copyWith(
-        selection: const TextSelection.collapsed(offset: 4));
+    oldValue = newValue.copyWith(selection: const TextSelection.collapsed(offset: 4));
     newValue = oldValue.copyWith(text: '1239456');
 
     formatted = formatter.formatEditUpdate(oldValue, newValue);
 
     // cursor must be now at fourth position (right after the number 9)
     expect(formatted.selection.baseOffset, equals(4));
+  });
+
+
+  test('FilteringTextInputFormatter should filter independent of selection', () {
+    // Regression test for https://github.com/flutter/flutter/issues/80842.
+
+    final TextInputFormatter formatter = FilteringTextInputFormatter.deny('abc', replacementString: '*');
+
+    const TextEditingValue oldValue = TextEditingValue.empty;
+    const TextEditingValue newValue = TextEditingValue(text: 'abcabcabc');
+
+    final String filteredText = formatter.formatEditUpdate(oldValue, newValue).text;
+
+    for (int i = 0; i < newValue.text.length; i += 1) {
+      final String text = formatter.formatEditUpdate(
+        oldValue,
+        newValue.copyWith(selection: TextSelection.collapsed(offset: i)),
+      ).text;
+      expect(filteredText, text);
+    }
+  });
+
+  test('FilteringTextInputFormatter should filter independent of composingRegion', () {
+    final TextInputFormatter formatter = FilteringTextInputFormatter.deny('abc', replacementString: '*');
+
+    const TextEditingValue oldValue = TextEditingValue.empty;
+    const TextEditingValue newValue = TextEditingValue(text: 'abcabcabc');
+
+    final String filteredText = formatter.formatEditUpdate(oldValue, newValue).text;
+
+    for (int i = 0; i < newValue.text.length; i += 1) {
+      final String text = formatter.formatEditUpdate(
+        oldValue,
+        newValue.copyWith(composing: TextRange.collapsed(i)),
+      ).text;
+      expect(filteredText, text);
+    }
+  });
+
+  test('FilteringTextInputFormatter basic filtering test', () {
+    final RegExp filter = RegExp('[A-Za-z0-9.@-]*');
+    final TextInputFormatter formatter = FilteringTextInputFormatter.allow(filter);
+
+    const TextEditingValue oldValue = TextEditingValue.empty;
+    const TextEditingValue newValue = TextEditingValue(text: 'ab&&ca@bcabc');
+
+    expect(formatter.formatEditUpdate(oldValue, newValue).text, 'abca@bcabc');
+  });
+
+  group('FilteringTextInputFormatter region', () {
+    const TextEditingValue oldValue = TextEditingValue.empty;
+
+    test('Preserves selection region', () {
+      const TextEditingValue newValue = TextEditingValue(text: 'AAABBBCCC');
+
+      // AAA | BBB | CCC => AAA | **** | CCC
+      expect(
+        FilteringTextInputFormatter.deny('BBB', replacementString: '****').formatEditUpdate(
+          oldValue,
+          newValue.copyWith(
+            selection: const TextSelection(baseOffset: 6, extentOffset: 3),
+          ),
+        ).selection,
+        const TextSelection(baseOffset: 7, extentOffset: 3),
+      );
+
+      // AAA | BBB CCC | => AAA | **** CCC |
+      expect(
+        FilteringTextInputFormatter.deny('BBB', replacementString: '****').formatEditUpdate(
+          oldValue,
+          newValue.copyWith(
+            selection: const TextSelection(baseOffset: 9, extentOffset: 3),
+          ),
+        ).selection,
+        const TextSelection(baseOffset: 10, extentOffset: 3),
+      );
+
+      // AAA BBB | CCC | => AAA **** | CCC |
+      expect(
+        FilteringTextInputFormatter.deny('BBB', replacementString: '****').formatEditUpdate(
+          oldValue,
+          newValue.copyWith(
+            selection: const TextSelection(baseOffset: 9, extentOffset: 6),
+          ),
+        ).selection,
+        const TextSelection(baseOffset: 10, extentOffset: 7),
+      );
+
+      // AAAB | B | BCCC => AAA***|CCC
+      // Same length replacement, keep the selection at where it is.
+      expect(
+        FilteringTextInputFormatter.deny('BBB', replacementString: '***').formatEditUpdate(
+          oldValue,
+          newValue.copyWith(
+            selection: const TextSelection(baseOffset: 5, extentOffset: 4),
+          ),
+        ).selection,
+        const TextSelection(baseOffset: 5, extentOffset: 4),
+      );
+
+      // AAA | BBB | CCC => AAA | CCC
+      expect(
+        FilteringTextInputFormatter.deny('BBB').formatEditUpdate(
+          oldValue,
+          newValue.copyWith(
+            selection: const TextSelection(baseOffset: 6, extentOffset: 3),
+          ),
+        ).selection,
+        const TextSelection(baseOffset: 3, extentOffset: 3),
+      );
+
+      expect(
+        FilteringTextInputFormatter.deny('BBB').formatEditUpdate(
+          oldValue,
+          newValue.copyWith(
+            selection: const TextSelection(baseOffset: 6, extentOffset: 3),
+          ),
+        ).selection,
+        const TextSelection(baseOffset: 3, extentOffset: 3),
+      );
+
+      // The unfortunate case, we don't know for sure where to put the selection
+      // so put it after the replacement string.
+      // AAAB|B|BCCC => AAA****|CCC
+      expect(
+        FilteringTextInputFormatter.deny('BBB', replacementString: '****').formatEditUpdate(
+          oldValue,
+          newValue.copyWith(
+            selection: const TextSelection(baseOffset: 5, extentOffset: 4),
+          ),
+        ).selection,
+        const TextSelection(baseOffset: 7, extentOffset: 7),
+      );
+    });
+
+    test('Preserves selection region, allow', () {
+      const TextEditingValue newValue = TextEditingValue(text: 'AAABBBCCC');
+
+      // AAA | BBB | CCC => **** | BBB | ****
+      expect(
+        FilteringTextInputFormatter.allow('BBB', replacementString: '****').formatEditUpdate(
+          oldValue,
+          newValue.copyWith(
+            selection: const TextSelection(baseOffset: 6, extentOffset: 3),
+          ),
+        ).selection,
+        const TextSelection(baseOffset: 7, extentOffset: 4),
+      );
+
+      // | AAABBBCCC | => | ****BBB**** |
+      expect(
+        FilteringTextInputFormatter.allow('BBB', replacementString: '****').formatEditUpdate(
+          oldValue,
+          newValue.copyWith(
+            selection: const TextSelection(baseOffset: 9, extentOffset: 0),
+          ),
+        ).selection,
+        const TextSelection(baseOffset: 11, extentOffset: 0),
+      );
+
+      // AAABBB | CCC | => ****BBB | **** |
+      expect(
+        FilteringTextInputFormatter.allow('BBB', replacementString: '****').formatEditUpdate(
+          oldValue,
+          newValue.copyWith(
+            selection: const TextSelection(baseOffset: 9, extentOffset: 6),
+          ),
+        ).selection,
+        const TextSelection(baseOffset: 11, extentOffset: 7),
+      );
+
+      // Overlapping matches: AAA | BBBBB | CCC => | BBB |
+      expect(
+        FilteringTextInputFormatter.allow('BBB').formatEditUpdate(
+          oldValue,
+          const TextEditingValue(
+            text: 'AAABBBBBCCC',
+            selection: TextSelection(baseOffset: 8, extentOffset: 3),
+          ),
+        ).selection,
+        const TextSelection(baseOffset: 3, extentOffset: 0),
+      );
+    });
+
+    test('Preserves composing region', () {
+      const TextEditingValue newValue = TextEditingValue(text: 'AAABBBCCC');
+
+      // AAA | BBB | CCC => AAA | **** | CCC
+      expect(
+        FilteringTextInputFormatter.deny('BBB', replacementString: '****').formatEditUpdate(
+          oldValue,
+          newValue.copyWith(
+            composing: const TextRange(start: 3, end: 6),
+          ),
+        ).composing,
+        const TextRange(start: 3, end: 7),
+      );
+
+      // AAA | BBB CCC | => AAA | **** CCC |
+      expect(
+        FilteringTextInputFormatter.deny('BBB', replacementString: '****').formatEditUpdate(
+          oldValue,
+          newValue.copyWith(
+            composing: const TextRange(start: 3, end: 9),
+          ),
+        ).composing,
+        const TextRange(start: 3, end: 10),
+      );
+
+      // AAA BBB | CCC | => AAA **** | CCC |
+      expect(
+        FilteringTextInputFormatter.deny('BBB', replacementString: '****').formatEditUpdate(
+          oldValue,
+          newValue.copyWith(
+            composing: const TextRange(start: 6, end: 9),
+          ),
+        ).composing,
+        const TextRange(start: 7, end: 10),
+      );
+
+      // AAAB | B | BCCC => AAA*** | CCC
+      // Same length replacement, don't move the composing region.
+      expect(
+        FilteringTextInputFormatter.deny('BBB', replacementString: '***').formatEditUpdate(
+          oldValue,
+          newValue.copyWith(
+            composing: const TextRange(start: 4, end: 5),
+          ),
+        ).composing,
+        const TextRange(start: 4, end: 5),
+      );
+
+      // AAA | BBB | CCC => | AAA CCC
+      expect(
+        FilteringTextInputFormatter.deny('BBB').formatEditUpdate(
+          oldValue,
+          newValue.copyWith(
+            composing: const TextRange(start: 3, end: 6),
+          ),
+        ).composing,
+        TextRange.empty,
+      );
+    });
   });
 }

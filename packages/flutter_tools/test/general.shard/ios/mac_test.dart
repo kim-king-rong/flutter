@@ -6,139 +6,206 @@ import 'package:file/file.dart';
 import 'package:file/memory.dart';
 import 'package:flutter_tools/src/artifacts.dart';
 import 'package:flutter_tools/src/base/file_system.dart';
-import 'package:flutter_tools/src/base/io.dart' show ProcessResult;
 import 'package:flutter_tools/src/base/logger.dart';
-import 'package:flutter_tools/src/base/platform.dart';
 import 'package:flutter_tools/src/base/process.dart';
+import 'package:flutter_tools/src/build_info.dart';
 import 'package:flutter_tools/src/cache.dart';
-import 'package:flutter_tools/src/ios/devices.dart';
+import 'package:flutter_tools/src/device.dart';
+import 'package:flutter_tools/src/ios/code_signing.dart';
 import 'package:flutter_tools/src/ios/mac.dart';
-import 'package:flutter_tools/src/ios/xcodeproj.dart';
+import 'package:flutter_tools/src/ios/xcresult.dart';
 import 'package:flutter_tools/src/project.dart';
 import 'package:flutter_tools/src/reporting/reporting.dart';
-import 'package:mockito/mockito.dart';
-import 'package:process/process.dart';
+import 'package:test/fake.dart';
+import 'package:unified_analytics/unified_analytics.dart';
 
 import '../../src/common.dart';
-import '../../src/context.dart';
+import '../../src/fake_process_manager.dart';
 import '../../src/fakes.dart';
 
-final Generator _kNoColorTerminalPlatform = () => FakePlatform(stdoutSupportsAnsi: false);
-final Map<Type, Generator> noColorTerminalOverride = <Type, Generator>{
-  Platform: _kNoColorTerminalPlatform,
-};
-
-class MockProcessManager extends Mock implements ProcessManager {}
-class MockXcodeProjectInterpreter extends Mock implements XcodeProjectInterpreter {}
-class MockIosProject extends Mock implements IosProject {}
-
 void main() {
-  BufferLogger logger;
+  late BufferLogger logger;
 
   setUp(() {
     logger = BufferLogger.test();
   });
 
   group('IMobileDevice', () {
-    Artifacts artifacts;
-    Cache cache;
+    late Artifacts artifacts;
+    late Cache cache;
 
     setUp(() {
       artifacts = Artifacts.test();
       cache = Cache.test(
         artifacts: <ArtifactSet>[
           FakeDyldEnvironmentArtifact(),
-        ]);
+        ],
+        processManager: FakeProcessManager.any(),
+      );
+    });
+
+    group('startLogger', () {
+      testWithoutContext('starts idevicesyslog when USB connected', () async {
+        final FakeProcessManager fakeProcessManager = FakeProcessManager.list(
+          <FakeCommand>[
+            const FakeCommand(
+              command: <String>['HostArtifact.idevicesyslog', '-u', '1234'],
+              environment: <String, String>{
+                'DYLD_LIBRARY_PATH': '/path/to/libraries'
+              },
+            ),
+          ],
+        );
+
+        final IMobileDevice iMobileDevice = IMobileDevice(
+          artifacts: artifacts,
+          cache: cache,
+          processManager: fakeProcessManager,
+          logger: logger,
+        );
+
+        await iMobileDevice.startLogger(
+          '1234',
+          false,
+        );
+        expect(fakeProcessManager, hasNoRemainingExpectations);
+      });
+
+      testWithoutContext('starts idevicesyslog when wirelessly connected', () async {
+        final FakeProcessManager fakeProcessManager = FakeProcessManager.list(
+          <FakeCommand>[
+            const FakeCommand(
+              command: <String>[
+                'HostArtifact.idevicesyslog', '-u', '1234', '--network'
+              ],
+              environment: <String, String>{
+                'DYLD_LIBRARY_PATH': '/path/to/libraries'
+              },
+            ),
+          ],
+        );
+
+        final IMobileDevice iMobileDevice = IMobileDevice(
+          artifacts: artifacts,
+          cache: cache,
+          processManager: fakeProcessManager,
+          logger: logger,
+        );
+
+        await iMobileDevice.startLogger(
+          '1234',
+          true,
+        );
+        expect(fakeProcessManager, hasNoRemainingExpectations);
+      });
     });
 
     group('screenshot', () {
-      MockProcessManager mockProcessManager;
-      File outputFile;
+      late FakeProcessManager fakeProcessManager;
+      late File outputFile;
 
       setUp(() {
-        mockProcessManager = MockProcessManager();
+        fakeProcessManager = FakeProcessManager.empty();
         outputFile = MemoryFileSystem.test().file('image.png');
       });
 
       testWithoutContext('error if idevicescreenshot is not installed', () async {
         // Let `idevicescreenshot` fail with exit code 1.
-        when(mockProcessManager.run(<String>['Artifact.idevicescreenshot.TargetPlatform.ios', outputFile.path],
-            environment: <String, String>{'DYLD_LIBRARY_PATH': 'Artifact.idevicescreenshot.TargetPlatform.ios'},
-            workingDirectory: null,
-        )).thenAnswer((_) => Future<ProcessResult>.value(ProcessResult(4, 1, '', '')));
+        fakeProcessManager.addCommand(FakeCommand(
+          command: <String>[
+            'HostArtifact.idevicescreenshot',
+            outputFile.path,
+            '--udid',
+            '1234',
+          ],
+          environment: const <String, String>{
+            'DYLD_LIBRARY_PATH': '/path/to/libraries',
+          },
+          exitCode: 1,
+        ));
 
         final IMobileDevice iMobileDevice = IMobileDevice(
           artifacts: artifacts,
           cache: cache,
-          processManager: mockProcessManager,
+          processManager: fakeProcessManager,
           logger: logger,
         );
 
-        expect(() async => await iMobileDevice.takeScreenshot(
+        expect(() async => iMobileDevice.takeScreenshot(
           outputFile,
           '1234',
-          IOSDeviceInterface.usb,
+          DeviceConnectionInterface.attached,
         ), throwsA(anything));
+        expect(fakeProcessManager, hasNoRemainingExpectations);
       });
 
       testWithoutContext('idevicescreenshot captures and returns USB screenshot', () async {
-        when(mockProcessManager.run(any, environment: anyNamed('environment'), workingDirectory: null)).thenAnswer(
-            (Invocation invocation) => Future<ProcessResult>.value(ProcessResult(4, 0, '', '')));
+        fakeProcessManager.addCommand(FakeCommand(
+          command: <String>[
+            'HostArtifact.idevicescreenshot', outputFile.path, '--udid', '1234',
+          ],
+          environment: const <String, String>{'DYLD_LIBRARY_PATH': '/path/to/libraries'},
+        ));
 
         final IMobileDevice iMobileDevice = IMobileDevice(
           artifacts: artifacts,
           cache: cache,
-          processManager: mockProcessManager,
+          processManager: fakeProcessManager,
           logger: logger,
         );
 
         await iMobileDevice.takeScreenshot(
           outputFile,
           '1234',
-          IOSDeviceInterface.usb,
+          DeviceConnectionInterface.attached,
         );
-        verify(mockProcessManager.run(<String>['Artifact.idevicescreenshot.TargetPlatform.ios', outputFile.path, '--udid', '1234'],
-            environment: <String, String>{'DYLD_LIBRARY_PATH': '/path/to/libraries'},
-            workingDirectory: null,
-        ));
+        expect(fakeProcessManager, hasNoRemainingExpectations);
       });
 
       testWithoutContext('idevicescreenshot captures and returns network screenshot', () async {
-        when(mockProcessManager.run(any, environment: anyNamed('environment'), workingDirectory: null)).thenAnswer(
-            (Invocation invocation) => Future<ProcessResult>.value(ProcessResult(4, 0, '', '')));
+        fakeProcessManager.addCommand(FakeCommand(
+          command: <String>[
+            'HostArtifact.idevicescreenshot', outputFile.path, '--udid', '1234', '--network',
+          ],
+          environment: const <String, String>{'DYLD_LIBRARY_PATH': '/path/to/libraries'},
+        ));
 
         final IMobileDevice iMobileDevice = IMobileDevice(
           artifacts: artifacts,
           cache: cache,
-          processManager: mockProcessManager,
+          processManager: fakeProcessManager,
           logger: logger,
         );
 
         await iMobileDevice.takeScreenshot(
           outputFile,
           '1234',
-          IOSDeviceInterface.network,
+          DeviceConnectionInterface.wireless,
         );
-        verify(mockProcessManager.run(<String>['Artifact.idevicescreenshot.TargetPlatform.ios', outputFile.path, '--udid', '1234', '--network'],
-          environment: <String, String>{'DYLD_LIBRARY_PATH': '/path/to/libraries'},
-          workingDirectory: null,
-        ));
+        expect(fakeProcessManager, hasNoRemainingExpectations);
       });
     });
   });
 
   group('Diagnose Xcode build failure', () {
-    Map<String, String> buildSettings;
-    MockUsage mockUsage;
+    late Map<String, String> buildSettings;
+    late TestUsage testUsage;
+    late FakeAnalytics fakeAnalytics;
 
     setUp(() {
       buildSettings = <String, String>{
         'PRODUCT_BUNDLE_IDENTIFIER': 'test.app',
       };
-      mockUsage = MockUsage();
+      testUsage = TestUsage();
+
+      final MemoryFileSystem fs = MemoryFileSystem.test();
+      fakeAnalytics = getInitializedFakeAnalyticsInstance(
+        fs: fs,
+        fakeFlutterVersion: FakeFlutterVersion(),
+      );
     });
 
-    testUsingContext('Sends analytics when bitcode fails', () async {
+    testWithoutContext('Sends analytics when bitcode fails', () async {
       const List<String> buildCommands = <String>['xcrun', 'cc', 'blah'];
       final XcodeBuildResult buildResult = XcodeBuildResult(
         success: false,
@@ -146,22 +213,39 @@ void main() {
         xcodeBuildExecution: XcodeBuildExecution(
           buildCommands: buildCommands,
           appDirectory: '/blah/blah',
-          buildForPhysicalDevice: true,
+          environmentType: EnvironmentType.physical,
           buildSettings: buildSettings,
         ),
       );
 
-      await diagnoseXcodeBuildFailure(buildResult, mockUsage, logger);
-      verify(mockUsage.sendEvent('build',
-        any,
-        label: 'xcode-bitcode-failure',
-        parameters: <String, String>{
-          cdKey(CustomDimensions.buildEventCommand): buildCommands.toString(),
-          cdKey(CustomDimensions.buildEventSettings): buildSettings.toString(),
-      })).called(1);
+      await diagnoseXcodeBuildFailure(buildResult, testUsage, logger, fakeAnalytics);
+      expect(testUsage.events, contains(
+        TestUsageEvent(
+          'build',
+          'ios',
+          label: 'xcode-bitcode-failure',
+          parameters: CustomDimensions(
+            buildEventCommand: buildCommands.toString(),
+            buildEventSettings: buildSettings.toString(),
+          ),
+        ),
+      ));
+      expect(
+        fakeAnalytics.sentEvents,
+        contains(Event.flutterBuildInfo(
+          label: 'xcode-bitcode-failure',
+          buildType: 'ios',
+          command: '[xcrun, cc, blah]',
+          settings: '{PRODUCT_BUNDLE_IDENTIFIER: test.app}'
+        )),
+      );
     });
 
-    testUsingContext('No provisioning profile shows message', () async {
+    testWithoutContext('fallback to stdout: No provisioning profile shows message', () async {
+      final Map<String, String> buildSettingsWithDevTeam = <String, String>{
+        'PRODUCT_BUNDLE_IDENTIFIER': 'test.app',
+        'DEVELOPMENT_TEAM': 'a team',
+      };
       final XcodeBuildResult buildResult = XcodeBuildResult(
         success: false,
         stdout: '''
@@ -189,7 +273,7 @@ Xcode's output:
     === CLEAN TARGET Runner OF PROJECT Runner WITH CONFIGURATION Release ===
 
     Check dependencies
-    [BCEROR]No profiles for 'com.example.test' were found:  Xcode couldn't find a provisioning profile matching 'com.example.test'.
+    [BCEROR]"Runner" requires a provisioning profile. Select a provisioning profile in the Signing & Capabilities editor.
     [BCEROR]Code signing is required for product type 'Application' in SDK 'iOS 10.3'
     [BCEROR]Code signing is required for product type 'Application' in SDK 'iOS 10.3'
     [BCEROR]Code signing is required for product type 'Application' in SDK 'iOS 10.3'
@@ -222,19 +306,57 @@ Error launching application on iPhone.''',
         xcodeBuildExecution: XcodeBuildExecution(
           buildCommands: <String>['xcrun', 'xcodebuild', 'blah'],
           appDirectory: '/blah/blah',
-          buildForPhysicalDevice: true,
-          buildSettings: buildSettings,
+          environmentType: EnvironmentType.physical,
+          buildSettings: buildSettingsWithDevTeam,
         ),
       );
 
-      await diagnoseXcodeBuildFailure(buildResult, mockUsage, logger);
+      await diagnoseXcodeBuildFailure(buildResult, testUsage, logger, fakeAnalytics);
       expect(
         logger.errorText,
-        contains("No Provisioning Profile was found for your project's Bundle Identifier or your \ndevice."),
+        contains(noProvisioningProfileInstruction),
       );
-    }, overrides: noColorTerminalOverride);
+    });
 
-    testUsingContext('No development team shows message', () async {
+    testWithoutContext('fallback to stdout: Ineligible destinations', () async {
+      final Map<String, String> buildSettingsWithDevTeam = <String, String>{
+        'PRODUCT_BUNDLE_IDENTIFIER': 'test.app',
+        'DEVELOPMENT_TEAM': 'a team',
+      };
+      final XcodeBuildResult buildResult = XcodeBuildResult(
+        success: false,
+        stderr: '''
+Launching lib/main.dart on iPhone in debug mode...
+Signing iOS app for device deployment using developer identity: "iPhone Developer: test@flutter.io (1122334455)"
+Running Xcode build...                                1.3s
+Failed to build iOS app
+Error output from Xcode build:
+↳
+    xcodebuild: error: Unable to find a destination matching the provided destination specifier:
+               		{ id:1234D567-890C-1DA2-34E5-F6789A0123C4 }
+
+               	Ineligible destinations for the "Runner" scheme:
+               		{ platform:iOS, id:dvtdevice-DVTiPhonePlaceholder-iphoneos:placeholder, name:Any iOS Device, error:iOS 17.0 is not installed. To use with Xcode, first download and install the platform }
+
+Could not build the precompiled application for the device.
+
+Error launching application on iPhone.''',
+        xcodeBuildExecution: XcodeBuildExecution(
+          buildCommands: <String>['xcrun', 'xcodebuild', 'blah'],
+          appDirectory: '/blah/blah',
+          environmentType: EnvironmentType.physical,
+          buildSettings: buildSettingsWithDevTeam,
+        ),
+      );
+
+      await diagnoseXcodeBuildFailure(buildResult, testUsage, logger, fakeAnalytics);
+      expect(
+        logger.errorText,
+        contains(missingPlatformInstructions('iOS 17.0')),
+      );
+    });
+
+    testWithoutContext('No development team shows message', () async {
       final XcodeBuildResult buildResult = XcodeBuildResult(
         success: false,
         stdout: '''
@@ -255,139 +377,65 @@ Xcode's output:
 ↳
     blah
 
-    === CLEAN TARGET url_launcher OF PROJECT Pods WITH CONFIGURATION Release ===
-
-    Check dependencies
-
-    blah
-
-    === CLEAN TARGET Pods-Runner OF PROJECT Pods WITH CONFIGURATION Release ===
-
-    Check dependencies
-
-    blah
-
-    === CLEAN TARGET Runner OF PROJECT Runner WITH CONFIGURATION Release ===
-
     Check dependencies
     [BCEROR]Signing for "Runner" requires a development team. Select a development team in the project editor.
-    [BCEROR]Code signing is required for product type 'Application' in SDK 'iOS 10.3'
-    [BCEROR]Code signing is required for product type 'Application' in SDK 'iOS 10.3'
-    [BCEROR]Code signing is required for product type 'Application' in SDK 'iOS 10.3'
-
-    blah
-
-    ** CLEAN SUCCEEDED **
-
-    === BUILD TARGET url_launcher OF PROJECT Pods WITH CONFIGURATION Release ===
-
-    Check dependencies
-
-    blah
-
-    === BUILD TARGET Pods-Runner OF PROJECT Pods WITH CONFIGURATION Release ===
-
-    Check dependencies
-
-    blah
-
-    === BUILD TARGET Runner OF PROJECT Runner WITH CONFIGURATION Release ===
-
-    Check dependencies
-    Signing for "Runner" requires a development team. Select a development team in the project editor.
-    Code signing is required for product type 'Application' in SDK 'iOS 10.3'
-    Code signing is required for product type 'Application' in SDK 'iOS 10.3'
-    Code signing is required for product type 'Application' in SDK 'iOS 10.3'
 
 Could not build the precompiled application for the device.''',
         xcodeBuildExecution: XcodeBuildExecution(
           buildCommands: <String>['xcrun', 'xcodebuild', 'blah'],
           appDirectory: '/blah/blah',
-          buildForPhysicalDevice: true,
+          environmentType: EnvironmentType.physical,
           buildSettings: buildSettings,
         ),
       );
 
-      await diagnoseXcodeBuildFailure(buildResult, mockUsage, logger);
+      await diagnoseXcodeBuildFailure(buildResult, testUsage, logger, fakeAnalytics);
       expect(
         logger.errorText,
         contains('Building a deployable iOS app requires a selected Development Team with a \nProvisioning Profile.'),
       );
-    }, overrides: noColorTerminalOverride);
+    });
 
-    testUsingContext('embedded and linked framework iOS mismatch shows message', () async {
+    testWithoutContext('does not show no development team message when other Xcode issues detected', () async {
       final XcodeBuildResult buildResult = XcodeBuildResult(
         success: false,
         stdout: '''
-Launching lib/main.dart on iPhone in debug mode...
-Automatically signing iOS for device deployment using specified development team in Xcode project: blah
-Xcode build done. 5.7s
+Running "flutter pub get" in flutter_gallery...  0.6s
+Launching lib/main.dart on x in release mode...
+Running pod install...                                1.2s
+Running Xcode build...                                1.4s
 Failed to build iOS app
 Error output from Xcode build:
 ↳
-** BUILD FAILED **
+    ** BUILD FAILED **
+
+
+    The following build commands failed:
+    	Check dependencies
+    (1 failure)
 Xcode's output:
 ↳
-note: Using new build system
-note: Building targets in parallel
-note: Planning build
-note: Constructing build description
-error: Building for iOS Simulator, but the linked and embedded framework 'App.framework' was built for iOS. (in target 'Runner' from project 'Runner')
-Could not build the precompiled application for the device.
+    blah
 
-Error launching application on iPhone.
-Exited (sigterm)''',
+    Check dependencies
+    [BCEROR]Signing for "Runner" requires a development team. Select a development team in the project editor.
+
+Could not build the precompiled application for the device.''',
         xcodeBuildExecution: XcodeBuildExecution(
           buildCommands: <String>['xcrun', 'xcodebuild', 'blah'],
           appDirectory: '/blah/blah',
-          buildForPhysicalDevice: true,
+          environmentType: EnvironmentType.physical,
           buildSettings: buildSettings,
         ),
+        xcResult: XCResult.test(issues: <XCResultIssue>[
+          XCResultIssue.test(message: 'Target aot_assembly_release failed', subType: 'Error'),
+        ])
       );
 
-      await diagnoseXcodeBuildFailure(buildResult, mockUsage, logger);
-      expect(
-        logger.errorText,
-        contains('Your Xcode project requires migration.'),
-      );
-    }, overrides: noColorTerminalOverride);
-
-    testUsingContext('embedded and linked framework iOS simulator mismatch shows message', () async {
-      final XcodeBuildResult buildResult = XcodeBuildResult(
-        success: false,
-        stdout: '''
-Launching lib/main.dart on iPhone in debug mode...
-Automatically signing iOS for device deployment using specified development team in Xcode project: blah
-Xcode build done. 5.7s
-Failed to build iOS app
-Error output from Xcode build:
-↳
-** BUILD FAILED **
-Xcode's output:
-↳
-note: Using new build system
-note: Building targets in parallel
-note: Planning build
-note: Constructing build description
-error: Building for iOS, but the linked and embedded framework 'App.framework' was built for iOS Simulator. (in target 'Runner' from project 'Runner')
-Could not build the precompiled application for the device.
-
-Error launching application on iPhone.
-Exited (sigterm)''',
-        xcodeBuildExecution: XcodeBuildExecution(
-          buildCommands: <String>['xcrun', 'xcodebuild', 'blah'],
-          appDirectory: '/blah/blah',
-          buildForPhysicalDevice: true,
-          buildSettings: buildSettings,
-        ),
-      );
-
-      await diagnoseXcodeBuildFailure(buildResult, mockUsage, logger);
-      expect(
-        logger.errorText,
-        contains('Your Xcode project requires migration.'),
-      );
-    }, overrides: noColorTerminalOverride);
+      await diagnoseXcodeBuildFailure(buildResult, testUsage, logger, fakeAnalytics);
+      expect(logger.errorText, contains('Error (Xcode): Target aot_assembly_release failed'));
+      expect(logger.errorText, isNot(contains('Building a deployable iOS app requires a selected Development Team')));
+    });
   });
 
   group('Upgrades project.pbxproj for old asset usage', () {
@@ -406,12 +454,9 @@ Exited (sigterm)''',
       'another line';
 
     testWithoutContext('upgradePbxProjWithFlutterAssets', () async {
-      final MockIosProject project = MockIosProject();
       final File pbxprojFile = MemoryFileSystem.test().file('project.pbxproj')
         ..writeAsStringSync(flutterAssetPbxProjLines);
-
-      when(project.xcodeProjectInfoFile).thenReturn(pbxprojFile);
-      when(project.hostAppBundleName(any)).thenAnswer((_) => Future<String>.value('UnitTestRunner.app'));
+      final FakeIosProject project = FakeIosProject(pbxprojFile);
 
       bool result = upgradePbxProjWithFlutterAssets(project, logger);
       expect(result, true);
@@ -441,10 +486,10 @@ Exited (sigterm)''',
   });
 
   group('remove Finder extended attributes', () {
-    Directory iosProjectDirectory;
+    late Directory projectDirectory;
     setUp(() {
       final MemoryFileSystem fs = MemoryFileSystem.test();
-      iosProjectDirectory = fs.directory('ios');
+      projectDirectory = fs.directory('flutter_project');
     });
 
     testWithoutContext('removes xattr', () async {
@@ -454,31 +499,43 @@ Exited (sigterm)''',
           '-r',
           '-d',
           'com.apple.FinderInfo',
-          iosProjectDirectory.path,
-        ])
+          projectDirectory.path,
+        ]),
       ]);
 
-      await removeFinderExtendedAttributes(iosProjectDirectory, ProcessUtils(processManager: processManager, logger: logger), logger);
-      expect(processManager.hasRemainingExpectations, false);
+      await removeFinderExtendedAttributes(projectDirectory, ProcessUtils(processManager: processManager, logger: logger), logger);
+      expect(processManager, hasNoRemainingExpectations);
     });
 
     testWithoutContext('ignores errors', () async {
       final FakeProcessManager processManager = FakeProcessManager.list(<FakeCommand>[
-        FakeCommand(command: <String>[
-          'xattr',
-          '-r',
-          '-d',
-          'com.apple.FinderInfo',
-          iosProjectDirectory.path,
-        ], exitCode: 1,
-        )
+        FakeCommand(
+          command: <String>[
+            'xattr',
+            '-r',
+            '-d',
+            'com.apple.FinderInfo',
+            projectDirectory.path,
+          ],
+          exitCode: 1,
+        ),
       ]);
 
-      await removeFinderExtendedAttributes(iosProjectDirectory, ProcessUtils(processManager: processManager, logger: logger), logger);
+      await removeFinderExtendedAttributes(projectDirectory, ProcessUtils(processManager: processManager, logger: logger), logger);
       expect(logger.traceText, contains('Failed to remove xattr com.apple.FinderInfo'));
-      expect(processManager.hasRemainingExpectations, false);
+      expect(processManager, hasNoRemainingExpectations);
     });
   });
 }
 
-class MockUsage extends Mock implements Usage {}
+class FakeIosProject extends Fake implements IosProject {
+  FakeIosProject(this.xcodeProjectInfoFile);
+  @override
+  final File xcodeProjectInfoFile;
+
+  @override
+  Future<String> hostAppBundleName(BuildInfo? buildInfo) async => 'UnitTestRunner.app';
+
+  @override
+  Directory get xcodeProject => xcodeProjectInfoFile.fileSystem.directory('Runner.xcodeproj');
+}

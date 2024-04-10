@@ -3,15 +3,14 @@
 // found in the LICENSE file.
 
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 
 class PestoDemo extends StatelessWidget {
-  const PestoDemo({ Key? key }) : super(key: key);
+  const PestoDemo({ super.key });
 
   static const String routeName = '/pesto';
 
   @override
-  Widget build(BuildContext context) => PestoHome();
+  Widget build(BuildContext context) => const PestoHome();
 }
 
 
@@ -24,12 +23,14 @@ const double _kRecipePageMaxWidth = 500.0;
 final Set<Recipe?> _favoriteRecipes = <Recipe?>{};
 
 final ThemeData _kTheme = ThemeData(
+  appBarTheme: const AppBarTheme(foregroundColor: Colors.white, backgroundColor: Colors.teal),
   brightness: Brightness.light,
-  primarySwatch: Colors.teal,
-  accentColor: Colors.redAccent,
+  floatingActionButtonTheme: const FloatingActionButtonThemeData(foregroundColor: Colors.white),
 );
 
 class PestoHome extends StatelessWidget {
+  const PestoHome({super.key});
+
   @override
   Widget build(BuildContext context) {
     return const RecipeGridPage(recipes: kPestoRecipes);
@@ -37,6 +38,8 @@ class PestoHome extends StatelessWidget {
 }
 
 class PestoFavorites extends StatelessWidget {
+  const PestoFavorites({super.key});
+
   @override
   Widget build(BuildContext context) {
     return RecipeGridPage(recipes: _favoriteRecipes.toList());
@@ -45,31 +48,26 @@ class PestoFavorites extends StatelessWidget {
 
 class PestoStyle extends TextStyle {
   const PestoStyle({
-    double fontSize = 12.0,
-    FontWeight? fontWeight,
-    Color color = Colors.black87,
-    double? letterSpacing,
-    double? height,
+    double super.fontSize = 12.0,
+    super.fontWeight,
+    Color super.color = Colors.black87,
+    super.letterSpacing,
+    super.height,
   }) : super(
     inherit: false,
-    color: color,
     fontFamily: 'Raleway',
-    fontSize: fontSize,
-    fontWeight: fontWeight,
     textBaseline: TextBaseline.alphabetic,
-    letterSpacing: letterSpacing,
-    height: height,
   );
 }
 
 // Displays a grid of recipe cards.
 class RecipeGridPage extends StatefulWidget {
-  const RecipeGridPage({ Key? key, this.recipes }) : super(key: key);
+  const RecipeGridPage({ super.key, this.recipes });
 
   final List<Recipe?>? recipes;
 
   @override
-  _RecipeGridPageState createState() => _RecipeGridPageState();
+  State<RecipeGridPage> createState() => _RecipeGridPageState();
 }
 
 class _RecipeGridPageState extends State<RecipeGridPage> {
@@ -81,12 +79,13 @@ class _RecipeGridPageState extends State<RecipeGridPage> {
       data: _kTheme.copyWith(platform: Theme.of(context).platform),
       child: Scaffold(
         floatingActionButton: FloatingActionButton(
-          child: const Icon(Icons.edit),
+          backgroundColor: Colors.redAccent,
           onPressed: () {
             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
               content: Text('Not supported.'),
             ));
           },
+          child: const Icon(Icons.edit),
         ),
         body: CustomScrollView(
           semanticChildCount: widget.recipes!.length,
@@ -168,7 +167,7 @@ class _RecipeGridPageState extends State<RecipeGridPage> {
   void showFavoritesPage(BuildContext context) {
     Navigator.push(context, MaterialPageRoute<void>(
       settings: const RouteSettings(name: '/pesto/favorites'),
-      builder: (BuildContext context) => PestoFavorites(),
+      builder: (BuildContext context) => const PestoFavorites(),
     ));
   }
 
@@ -186,13 +185,13 @@ class _RecipeGridPageState extends State<RecipeGridPage> {
 }
 
 class PestoLogo extends StatefulWidget {
-  const PestoLogo({this.height, this.t});
+  const PestoLogo({super.key, this.height, this.t});
 
   final double? height;
   final double? t;
 
   @override
-  _PestoLogoState createState() => _PestoLogoState();
+  State<PestoLogo> createState() => _PestoLogoState();
 }
 
 class _PestoLogoState extends State<PestoLogo> {
@@ -249,7 +248,7 @@ class _PestoLogoState extends State<PestoLogo> {
 
 // A card with the recipe's image, author, and title.
 class RecipeCard extends StatelessWidget {
-  const RecipeCard({ Key? key, this.recipe, this.onTap }) : super(key: key);
+  const RecipeCard({ super.key, this.recipe, this.onTap });
 
   final Recipe? recipe;
   final VoidCallback? onTap;
@@ -311,12 +310,12 @@ class RecipeCard extends StatelessWidget {
 
 // Displays one recipe. Includes the recipe sheet with a background image.
 class RecipePage extends StatefulWidget {
-  const RecipePage({ Key? key, this.recipe }) : super(key: key);
+  const RecipePage({ super.key, this.recipe });
 
   final Recipe? recipe;
 
   @override
-  _RecipePageState createState() => _RecipePageState();
+  State<RecipePage> createState() => _RecipePageState();
 }
 
 class _RecipePageState extends State<RecipePage> {
@@ -370,7 +369,7 @@ class _RecipePageState extends State<RecipePage> {
                   background: DecoratedBox(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        begin: Alignment(0.0, -1.0),
+                        begin: Alignment.topCenter,
                         end: Alignment(0.0, -0.2),
                         colors: <Color>[Color(0x60000000), Color(0x00000000)],
                       ),
@@ -389,8 +388,9 @@ class _RecipePageState extends State<RecipePage> {
                     Positioned(
                       right: 16.0,
                       child: FloatingActionButton(
-                        child: Icon(isFavorite ? Icons.favorite : Icons.favorite_border),
+                        backgroundColor: Colors.redAccent,
                         onPressed: _toggleFavorite,
+                        child: Icon(isFavorite ? Icons.favorite : Icons.favorite_border),
                       ),
                     ),
                   ],
@@ -419,17 +419,18 @@ class _RecipePageState extends State<RecipePage> {
 
   void _toggleFavorite() {
     setState(() {
-      if (_favoriteRecipes.contains(widget.recipe))
+      if (_favoriteRecipes.contains(widget.recipe)) {
         _favoriteRecipes.remove(widget.recipe);
-      else
+      } else {
         _favoriteRecipes.add(widget.recipe);
+      }
     });
   }
 }
 
 /// Displays the recipe's name and instructions.
 class RecipeSheet extends StatelessWidget {
-  RecipeSheet({ Key? key, this.recipe }) : super(key: key);
+  RecipeSheet({ super.key, this.recipe });
 
   final TextStyle titleStyle = const PestoStyle(fontSize: 34.0);
   final TextStyle descriptionStyle = const PestoStyle(fontSize: 15.0, color: Colors.black54, height: 24.0/15.0);

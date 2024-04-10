@@ -3,9 +3,10 @@
 // found in the LICENSE file.
 
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 
 class PictureCachePage extends StatelessWidget {
+  const PictureCachePage({super.key});
+
   static const List<String> kTabNames = <String>['1', '2', '3', '4', '5'];
 
   @override
@@ -44,8 +45,7 @@ class PictureCachePage extends StatelessWidget {
 }
 
 class ListItem extends StatelessWidget {
-  const ListItem({Key key, this.index})
-      : super(key: key);
+  const ListItem({super.key, required this.index});
 
   final int index;
 
@@ -62,7 +62,7 @@ class ListItem extends StatelessWidget {
       _buildUserInfo(),
       const SizedBox(
         height: 10,
-      )
+      ),
     ];
     if (index % 3 != 0) {
       contents.add(_buildImageContent());
@@ -140,7 +140,7 @@ class ListItem extends StatelessWidget {
         ),
         const SizedBox(
           width: 15,
-        )
+        ),
       ],
     );
   }
@@ -212,9 +212,9 @@ class ListItem extends StatelessWidget {
     if (count < 10000) {
       return count.toString();
     } else if (count < 100000) {
-      return (count / 10000).toStringAsPrecision(2) + 'w';
+      return '${(count / 10000).toStringAsPrecision(2)}w';
     } else {
-      return (count / 10000).floor().toString() + 'w';
+      return '${(count / 10000).floor()}w';
     }
   }
 

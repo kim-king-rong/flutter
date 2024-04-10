@@ -12,7 +12,7 @@ class TestRoute extends PageRouteBuilder<void> {
 }
 
 class IconTextBox extends StatelessWidget {
-  const IconTextBox(this.text, { Key? key }) : super(key: key);
+  const IconTextBox(this.text, { super.key });
   final String text;
   @override
   Widget build(BuildContext context) {
@@ -63,7 +63,7 @@ void main() {
                               TestRoute(
                                 useCaptureAll
                                   ? InheritedTheme.captureAll(context, const IconTextBox('Hello'))
-                                  : const IconTextBox('Hello')
+                                  : const IconTextBox('Hello'),
                               ),
                             );
                           },

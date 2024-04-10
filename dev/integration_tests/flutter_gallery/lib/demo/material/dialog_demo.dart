@@ -21,7 +21,7 @@ const String _alertWithTitleText =
   'data to Google, even when no apps are running.';
 
 class DialogDemoItem extends StatelessWidget {
-  const DialogDemoItem({ Key? key, this.icon, this.color, this.text, this.onPressed }) : super(key: key);
+  const DialogDemoItem({ super.key, this.icon, this.color, this.text, this.onPressed });
 
   final IconData? icon;
   final Color? color;
@@ -33,8 +33,6 @@ class DialogDemoItem extends StatelessWidget {
     return SimpleDialogOption(
       onPressed: onPressed,
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.center,
         children: <Widget>[
           Icon(icon, size: 36.0, color: color),
           Padding(
@@ -48,6 +46,8 @@ class DialogDemoItem extends StatelessWidget {
 }
 
 class DialogDemo extends StatefulWidget {
+  const DialogDemo({super.key});
+
   static const String routeName = '/material/dialog';
 
   @override
@@ -82,7 +82,7 @@ class DialogDemoState extends State<DialogDemo> {
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    final TextStyle dialogTextStyle = theme.textTheme.subtitle1!.copyWith(color: theme.textTheme.caption!.color);
+    final TextStyle dialogTextStyle = theme.textTheme.titleMedium!.copyWith(color: theme.textTheme.bodySmall!.color);
 
     return Scaffold(
       appBar: AppBar(
@@ -192,7 +192,7 @@ class DialogDemoState extends State<DialogDemo> {
             child: const Text('FULLSCREEN'),
             onPressed: () {
               Navigator.push(context, MaterialPageRoute<DismissDialogAction>(
-                builder: (BuildContext context) => FullScreenDialogDemo(),
+                builder: (BuildContext context) => const FullScreenDialogDemo(),
                 fullscreenDialog: true,
               ));
             },

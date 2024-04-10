@@ -7,13 +7,13 @@ import 'package:flutter/material.dart';
 import 'logic.dart';
 
 class Calculator extends StatefulWidget {
-  const Calculator({Key? key}) : super(key: key);
+  const Calculator({super.key});
 
   @override
-  _CalculatorState createState() => _CalculatorState();
+  State<Calculator> createState() => CalculatorState();
 }
 
-class _CalculatorState extends State<Calculator> {
+class CalculatorState extends State<Calculator> {
   /// As the user taps keys we update the current `_expression` and we also
   /// keep a stack of previous expressions so we can return to earlier states
   /// when the user hits the DEL key.
@@ -138,7 +138,7 @@ class _CalculatorState extends State<Calculator> {
 }
 
 class CalcDisplay extends StatelessWidget {
-  const CalcDisplay({ this.content });
+  const CalcDisplay({ super.key, this.content});
 
   final String? content;
 
@@ -154,9 +154,9 @@ class CalcDisplay extends StatelessWidget {
 }
 
 class KeyPad extends StatelessWidget {
-  const KeyPad({ this.calcState });
+  const KeyPad({ super.key, this.calcState });
 
-  final _CalculatorState? calcState;
+  final CalculatorState? calcState;
 
   @override
   Widget build(BuildContext context) {
@@ -202,7 +202,7 @@ class KeyPad extends StatelessWidget {
             ),
             Expanded(
               child: Material(
-                color: themeData.backgroundColor,
+                color: themeData.colorScheme.surface,
                 child: Column(
                   children: <Widget>[
                     CalcKey('\u232B', calcState!.handleDelTap),
@@ -222,7 +222,7 @@ class KeyPad extends StatelessWidget {
 }
 
 class KeyRow extends StatelessWidget {
-  const KeyRow(this.keys);
+  const KeyRow(this.keys, {super.key});
 
   final List<Widget> keys;
 
@@ -238,7 +238,7 @@ class KeyRow extends StatelessWidget {
 }
 
 class CalcKey extends StatelessWidget {
-  const CalcKey(this.text, this.onTap);
+  const CalcKey(this.text, this.onTap, {super.key});
 
   final String text;
   final GestureTapCallback onTap;
@@ -265,8 +265,8 @@ class CalcKey extends StatelessWidget {
 }
 
 class NumberKey extends CalcKey {
-  NumberKey(int value, _CalculatorState? calcState)
+  NumberKey(int value, CalculatorState? calcState, {Key? key})
     : super('$value', () {
         calcState!.handleNumberTap(value);
-      });
+      }, key: key);
 }

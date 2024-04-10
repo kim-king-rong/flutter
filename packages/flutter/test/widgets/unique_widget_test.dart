@@ -2,11 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 class TestUniqueWidget extends UniqueWidget<TestUniqueWidgetState> {
-  const TestUniqueWidget({ required GlobalKey<TestUniqueWidgetState> key }) : super(key: key);
+  const TestUniqueWidget({ required super.key });
 
   @override
   TestUniqueWidgetState createState() => TestUniqueWidgetState();

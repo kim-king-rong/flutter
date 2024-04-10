@@ -8,10 +8,9 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:flutter/foundation.dart' show WriteBuffer;
 import 'package:flutter/services.dart';
-import 'package:matcher/matcher.dart';
-import '../flutter_test_alternative.dart';
+import 'package:flutter_test/flutter_test.dart';
+
 import 'message_codecs_testing.dart';
 
 void main() {
@@ -47,6 +46,19 @@ void main() {
   group('Standard method codec', () {
     const MethodCodec method = StandardMethodCodec();
     const StandardMessageCodec messageCodec = StandardMessageCodec();
+
+    test('Should encode and decode objects produced from codec', () {
+      final ByteData? data = messageCodec.encodeMessage(<Object, Object>{
+        'foo': true,
+        3: 'fizz',
+      });
+
+      expect(messageCodec.decodeMessage(data), <Object?, Object?>{
+        'foo': true,
+        3: 'fizz',
+      });
+    });
+
     test('should decode error envelope without native stacktrace', () {
       final ByteData errorData = method.encodeErrorEnvelope(
         code: 'errorCode',
@@ -54,13 +66,16 @@ void main() {
         details: 'errorDetails',
       );
       expect(
-          () => method.decodeEnvelope(errorData),
-          throwsA(predicate((PlatformException e) =>
-              e is PlatformException &&
+        () => method.decodeEnvelope(errorData),
+        throwsA(predicate(
+          (PlatformException e) =>
               e.code == 'errorCode' &&
               e.message == 'errorMessage' &&
-              e.details == 'errorDetails')));
+              e.details == 'errorDetails',
+        )),
+      );
     });
+
     test('should decode error envelope with native stacktrace.', () {
       final WriteBuffer buffer = WriteBuffer();
       buffer.putUint8(1);
@@ -70,9 +85,26 @@ void main() {
       messageCodec.writeValue(buffer, 'errorStacktrace');
       final ByteData errorData = buffer.done();
       expect(
-          () => method.decodeEnvelope(errorData),
-          throwsA(predicate((PlatformException e) =>
-              e is PlatformException && e.stacktrace == 'errorStacktrace')));
+        () => method.decodeEnvelope(errorData),
+        throwsA(predicate((PlatformException e) => e.stacktrace == 'errorStacktrace')),
+      );
+    });
+
+    test('should allow null error message,', () {
+      final ByteData errorData = method.encodeErrorEnvelope(
+        code: 'errorCode',
+        details: 'errorDetails',
+      );
+      expect(
+        () => method.decodeEnvelope(errorData),
+        throwsA(
+          predicate((PlatformException e) {
+            return e.code == 'errorCode' &&
+              e.message == null &&
+              e.details == 'errorDetails';
+          }),
+        ),
+      );
     });
   });
   group('Json method codec', () {
@@ -86,25 +118,26 @@ void main() {
         details: 'errorDetails',
       );
       expect(
-          () => jsonMethodCodec.decodeEnvelope(errorData),
-          throwsA(predicate((PlatformException e) =>
-              e is PlatformException &&
-              e.code == 'errorCode' &&
-              e.message == 'errorMessage' &&
-              e.details == 'errorDetails')));
+        () => jsonMethodCodec.decodeEnvelope(errorData),
+        throwsA(predicate(
+          (PlatformException e) =>
+            e.code == 'errorCode' &&
+            e.message == 'errorMessage' &&
+            e.details == 'errorDetails',
+        )),
+      );
     });
     test('should decode error envelope with native stacktrace.', () {
-      final ByteData? errorData = stringCodec.encodeMessage(json
-          .encode(<dynamic>[
+      final ByteData? errorData = stringCodec.encodeMessage(json.encode(<dynamic>[
         'errorCode',
         'errorMessage',
         'errorDetails',
-        'errorStacktrace'
+        'errorStacktrace',
       ]));
       expect(
-          () => jsonMethodCodec.decodeEnvelope(errorData!),
-          throwsA(predicate((PlatformException e) =>
-              e is PlatformException && e.stacktrace == 'errorStacktrace')));
+        () => jsonMethodCodec.decodeEnvelope(errorData!),
+        throwsA(predicate((PlatformException e) => e.stacktrace == 'errorStacktrace')),
+      );
     });
   });
   group('JSON message codec', () {
@@ -203,6 +236,17 @@ void main() {
           double.infinity,
           double.nan,
         ]),
+        Float32List.fromList(<double>[
+          double.negativeInfinity,
+          -double.maxFinite,
+          -double.minPositive,
+          -0.0,
+          0.0,
+          double.minPositive,
+          double.maxFinite,
+          double.infinity,
+          double.nan,
+        ]),
         <dynamic>['nested', <dynamic>[]],
         <dynamic, dynamic>{'a': 'nested', null: <dynamic, dynamic>{}},
         'world',
@@ -233,5 +277,15 @@ void main() {
         ],
       );
     });
+  });
+
+  test('toString works as intended', () async {
+    const MethodCall methodCall = MethodCall('sample method');
+    final PlatformException platformException = PlatformException(code: '100');
+    final MissingPluginException missingPluginException = MissingPluginException();
+
+    expect(methodCall.toString(), 'MethodCall(sample method, null)');
+    expect(platformException.toString(), 'PlatformException(100, null, null, null)');
+    expect(missingPluginException.toString(), 'MissingPluginException(null)');
   });
 }

@@ -2,17 +2,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 class TestTransition extends AnimatedWidget {
   const TestTransition({
-    Key? key,
+    super.key,
     required this.childFirstHalf,
     required this.childSecondHalf,
     required Animation<double> animation,
-  }) : super(key: key, listenable: animation);
+  }) : super(listenable: animation);
 
   final Widget childFirstHalf;
   final Widget childSecondHalf;
@@ -20,8 +19,9 @@ class TestTransition extends AnimatedWidget {
   @override
   Widget build(BuildContext context) {
     final Animation<double> animation = listenable as Animation<double>;
-    if (animation.value >= 0.5)
+    if (animation.value >= 0.5) {
       return childSecondHalf;
+    }
     return childFirstHalf;
   }
 }
@@ -63,20 +63,27 @@ void main() {
 
     String state({ bool skipOffstage = true }) {
       String result = '';
-      if (tester.any(find.text('A', skipOffstage: skipOffstage)))
+      if (tester.any(find.text('A', skipOffstage: skipOffstage))) {
         result += 'A';
-      if (tester.any(find.text('B', skipOffstage: skipOffstage)))
+      }
+      if (tester.any(find.text('B', skipOffstage: skipOffstage))) {
         result += 'B';
-      if (tester.any(find.text('C', skipOffstage: skipOffstage)))
+      }
+      if (tester.any(find.text('C', skipOffstage: skipOffstage))) {
         result += 'C';
-      if (tester.any(find.text('D', skipOffstage: skipOffstage)))
+      }
+      if (tester.any(find.text('D', skipOffstage: skipOffstage))) {
         result += 'D';
-      if (tester.any(find.text('E', skipOffstage: skipOffstage)))
+      }
+      if (tester.any(find.text('E', skipOffstage: skipOffstage))) {
         result += 'E';
-      if (tester.any(find.text('F', skipOffstage: skipOffstage)))
+      }
+      if (tester.any(find.text('F', skipOffstage: skipOffstage))) {
         result += 'F';
-      if (tester.any(find.text('G', skipOffstage: skipOffstage)))
+      }
+      if (tester.any(find.text('G', skipOffstage: skipOffstage))) {
         result += 'G';
+      }
       return result;
     }
 
@@ -113,8 +120,8 @@ void main() {
             case '/4': return TestRoute<void>(settings: settings, child: const Text('G'));
           }
           return null;
-        }
-      )
+        },
+      ),
     );
 
     final NavigatorState navigator = insideKey.currentContext!.findAncestorStateOfType<NavigatorState>()!;
@@ -192,14 +199,12 @@ void main() {
   testWidgets('Check onstage/offstage handling of barriers around transitions', (WidgetTester tester) async {
     await tester.pumpWidget(
       MaterialApp(
-        onGenerateRoute: (RouteSettings settings) {
-          switch (settings.name) {
-            case '/': return TestRoute<void>(settings: settings, child: const Text('A'));
-            case '/1': return TestRoute<void>(settings: settings, barrierColor: const Color(0xFFFFFF00), child: const Text('B'));
-          }
-          return null;
-        }
-      )
+        onGenerateRoute: (RouteSettings settings) => switch (settings.name) {
+          '/'  => TestRoute<void>(settings: settings, child: const Text('A')),
+          '/1' => TestRoute<void>(settings: settings, barrierColor: const Color(0xFFFFFF00), child: const Text('B')),
+          _ => null,
+        },
+      ),
     );
     expect(find.byType(ModalBarrier), findsOneWidget);
 

@@ -3,10 +3,7 @@
 // found in the LICENSE file.
 
 import 'package:flutter/gestures.dart';
-
-import '../flutter_test_alternative.dart';
-
-typedef GestureArenaCallback = void Function(Object key);
+import 'package:flutter_test/flutter_test.dart';
 
 const int primaryKey = 4;
 

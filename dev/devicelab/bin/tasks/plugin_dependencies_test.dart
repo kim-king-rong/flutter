@@ -22,7 +22,7 @@ Future<void> main() async {
 
     section('Find Java');
 
-    final String javaHome = await findJavaHome();
+    final String? javaHome = await findJavaHome();
     if (javaHome == null) {
       return TaskResult.failure('Could not find Java');
     }
@@ -101,8 +101,8 @@ dependencies:
     sdk: flutter
 
 environment:
-  sdk: ">=2.0.0-dev.28.0 <3.0.0"
-  flutter: ">=1.5.0 <2.0.0"
+  sdk: '>=3.2.0-0 <4.0.0'
+  flutter: ">=1.5.0"
 ''', flush: true);
 
       section('Create plugin D without ios/ directory');
@@ -216,6 +216,10 @@ public class DummyPluginAClass {
       const String kExpectedPluginsDependenciesContent =
         '['
           '{'
+            '"name":"integration_test",'
+            '"dependencies":[]'
+          '},'
+          '{'
             '"name":"plugin_a",'
             '"dependencies":["plugin_b","plugin_c","plugin_d"]'
           '},'
@@ -280,6 +284,7 @@ public class DummyPluginAClass {
             options: <String>[
               'ios',
               '--no-codesign',
+              '--verbose',
             ],
           );
         });

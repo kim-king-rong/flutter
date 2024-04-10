@@ -17,11 +17,7 @@ typedef OnResultListener = void Function(String result);
 // in real-world applications.
 class Calculator {
   Calculator({ required this.onProgressListener, required this.onResultListener, String? data })
-    : assert(onProgressListener != null),
-      assert(onResultListener != null),
-      // In order to keep the example files smaller, we "cheat" a little and
-      // replicate our small json string into a 10,000-element array.
-      _data = _replicateJson(data, 10000);
+    : _data = _replicateJson(data, 10000);
 
   final OnProgressListener onProgressListener;
   final OnResultListener onResultListener;
@@ -37,18 +33,19 @@ class Calculator {
     int i = 0;
     final JsonDecoder decoder = JsonDecoder(
       (dynamic key, dynamic value) {
-        if (key is int && i++ % _NOTIFY_INTERVAL == 0)
+        if (key is int && i++ % _NOTIFY_INTERVAL == 0) {
           onProgressListener(i.toDouble(), _NUM_ITEMS.toDouble());
+        }
         return value;
-      }
+      },
     );
     try {
       final List<dynamic> result = decoder.convert(_data) as List<dynamic>;
       final int n = result.length;
       onResultListener('Decoded $n results');
-    } catch (e, stack) {
-      print('Invalid JSON file: $e');
-      print(stack);
+    } on FormatException catch (e, stack) {
+      debugPrint('Invalid JSON file: $e');
+      debugPrint('$stack');
     }
   }
 
@@ -56,8 +53,9 @@ class Calculator {
     final StringBuffer buffer = StringBuffer()..write('[');
     for (int i = 0; i < count; i++) {
       buffer.write(data);
-      if (i < count - 1)
+      if (i < count - 1) {
         buffer.write(',');
+      }
     }
     buffer.write(']');
     return buffer.toString();
@@ -85,9 +83,7 @@ class CalculationMessage {
 // progress of the background computation.
 class CalculationManager {
   CalculationManager({ required this.onProgressListener, required this.onResultListener })
-    : assert(onProgressListener != null),
-      assert(onResultListener != null),
-      _receivePort = ReceivePort() {
+    : _receivePort = ReceivePort() {
     _receivePort.listen(_handleMessage);
   }
 
@@ -197,6 +193,8 @@ class CalculationManager {
 // This is a StatefulWidget in order to hold the CalculationManager and
 // the AnimationController for the running animation.
 class IsolateExampleWidget extends StatefulWidget {
+  const IsolateExampleWidget({super.key});
+
   @override
   IsolateExampleState createState() => IsolateExampleState();
 }
@@ -208,21 +206,14 @@ class IsolateExampleState extends State<StatefulWidget> with SingleTickerProvide
   String _label = 'Start';
   String _result = ' ';
   double _progress = 0.0;
-  late AnimationController _animation;
-  late CalculationManager _calculationManager;
-
-  @override
-  void initState() {
-    super.initState();
-    _animation = AnimationController(
-      duration: const Duration(milliseconds: 3600),
-      vsync: this,
-    )..repeat();
-    _calculationManager = CalculationManager(
-      onProgressListener: _handleProgressUpdate,
-      onResultListener: _handleResult,
-    );
-  }
+  late final AnimationController _animation = AnimationController(
+    duration: const Duration(milliseconds: 3600),
+    vsync: this,
+  )..repeat();
+  late final CalculationManager _calculationManager = CalculationManager(
+    onProgressListener: _handleProgressUpdate,
+    onResultListener: _handleResult,
+  );
 
   @override
   void dispose() {
@@ -247,14 +238,14 @@ class IsolateExampleState extends State<StatefulWidget> with SingleTickerProvide
           Opacity(
             opacity: _calculationManager.isRunning ? 1.0 : 0.0,
             child: CircularProgressIndicator(
-              value: _progress
+              value: _progress,
             ),
           ),
           Text(_status),
           Center(
             child: ElevatedButton(
-              child: Text(_label),
               onPressed: _handleButtonPressed,
+              child: Text(_label),
             ),
           ),
           Text(_result),
@@ -272,23 +263,20 @@ class IsolateExampleState extends State<StatefulWidget> with SingleTickerProvide
   }
 
   void _handleButtonPressed() {
-    if (_calculationManager.isRunning)
+    if (_calculationManager.isRunning) {
       _calculationManager.stop();
-    else
+    } else {
       _calculationManager.start();
+    }
     _updateState(' ', 0.0);
   }
 
   String _getStatus(CalculationState state) {
-    switch (state) {
-      case CalculationState.loading:
-        return 'Loading...';
-      case CalculationState.calculating:
-        return 'In Progress';
-      case CalculationState.idle:
-      default:
-        return 'Idle';
-    }
+    return switch (state) {
+      CalculationState.loading     => 'Loading...',
+      CalculationState.calculating => 'In Progress',
+      CalculationState.idle        => 'Idle',
+    };
   }
 
   void _updateState(String result, double progress) {
@@ -302,5 +290,5 @@ class IsolateExampleState extends State<StatefulWidget> with SingleTickerProvide
 }
 
 void main() {
-  runApp(MaterialApp(home: IsolateExampleWidget()));
+  runApp(const MaterialApp(home: IsolateExampleWidget()));
 }

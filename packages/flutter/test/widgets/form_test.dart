@@ -2,8 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   testWidgets('onSaved callback is called', (WidgetTester tester) async {
@@ -13,7 +15,7 @@ void main() {
     Widget builder() {
       return MaterialApp(
         home: MediaQuery(
-          data: const MediaQueryData(devicePixelRatio: 1.0),
+          data: const MediaQueryData(),
           child: Directionality(
             textDirection: TextDirection.ltr,
             child: Center(
@@ -52,7 +54,7 @@ void main() {
     Widget builder() {
       return MaterialApp(
         home: MediaQuery(
-          data: const MediaQueryData(devicePixelRatio: 1.0),
+          data: const MediaQueryData(),
           child: Directionality(
             textDirection: TextDirection.ltr,
             child: Center(
@@ -75,7 +77,7 @@ void main() {
 
     Future<void> checkText(String testValue) async {
       await tester.enterText(find.byType(TextField), testValue);
-      // pump'ing is unnecessary because callback happens regardless of frames
+      // Pumping is unnecessary because callback happens regardless of frames.
       expect(fieldValue, equals(testValue));
     }
 
@@ -85,12 +87,12 @@ void main() {
 
   testWidgets('Validator sets the error text only when validate is called', (WidgetTester tester) async {
     final GlobalKey<FormState> formKey = GlobalKey<FormState>();
-    String? errorText(String? value) => (value ?? '') + '/error';
+    String? errorText(String? value) => '${value ?? ''}/error';
 
     Widget builder(AutovalidateMode autovalidateMode) {
       return MaterialApp(
         home: MediaQuery(
-          data: const MediaQueryData(devicePixelRatio: 1.0),
+          data: const MediaQueryData(),
           child: Directionality(
             textDirection: TextDirection.ltr,
             child: Center(
@@ -137,6 +139,45 @@ void main() {
     await checkErrorText('');
   });
 
+  testWidgets('Should announce error text when validate returns error', (WidgetTester tester) async {
+    final GlobalKey<FormState> formKey = GlobalKey<FormState>();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MediaQuery(
+          data: const MediaQueryData(),
+          child: Directionality(
+            textDirection: TextDirection.ltr,
+            child: Center(
+              child: Material(
+                child: Form(
+                  key: formKey,
+                  child: TextFormField(
+                    validator: (_)=> 'error',
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    formKey.currentState!.reset();
+    await tester.enterText(find.byType(TextFormField), '');
+    await tester.pump();
+
+    // Manually validate.
+    expect(find.text('error'), findsNothing);
+    formKey.currentState!.validate();
+    await tester.pump();
+    expect(find.text('error'), findsOneWidget);
+
+    final CapturedAccessibilityAnnouncement announcement = tester.takeAnnouncements().single;
+    expect(announcement.message, 'error');
+    expect(announcement.textDirection, TextDirection.ltr);
+    expect(announcement.assertiveness, Assertiveness.assertive);
+
+  });
+
   testWidgets('isValid returns true when a field is valid', (WidgetTester tester) async {
     final GlobalKey<FormFieldState<String>> fieldKey1 = GlobalKey<FormFieldState<String>>();
     final GlobalKey<FormFieldState<String>> fieldKey2 = GlobalKey<FormFieldState<String>>();
@@ -146,7 +187,7 @@ void main() {
     Widget builder() {
       return MaterialApp(
         home: MediaQuery(
-          data: const MediaQueryData(devicePixelRatio: 1.0),
+          data: const MediaQueryData(),
           child: Directionality(
             textDirection: TextDirection.ltr,
             child: Center(
@@ -193,7 +234,7 @@ void main() {
       Widget builder() {
         return MaterialApp(
           home: MediaQuery(
-            data: const MediaQueryData(devicePixelRatio: 1.0),
+            data: const MediaQueryData(),
             child: Directionality(
               textDirection: TextDirection.ltr,
               child: Center(
@@ -231,6 +272,121 @@ void main() {
     },
   );
 
+  testWidgets(
+    'validateGranularly returns a set containing all, and only, invalid fields',
+    (WidgetTester tester) async {
+      final GlobalKey<FormState> formKey = GlobalKey<FormState>();
+      final UniqueKey validFieldsKey = UniqueKey();
+      final UniqueKey invalidFieldsKey = UniqueKey();
+
+      const String validString = 'Valid string';
+      const String invalidString = 'Invalid string';
+      String? validator(String? s) => s == validString ? null : 'Error text';
+
+      Widget builder() {
+        return MaterialApp(
+          home: MediaQuery(
+            data: const MediaQueryData(),
+            child: Directionality(
+              textDirection: TextDirection.ltr,
+              child: Center(
+                child: Material(
+                  child: Form(
+                    key: formKey,
+                    child: ListView(
+                      children: <Widget>[
+                        TextFormField(
+                          key: validFieldsKey,
+                          initialValue: validString,
+                          validator: validator,
+                          autovalidateMode: AutovalidateMode.disabled,
+                        ),
+                        TextFormField(
+                          key: invalidFieldsKey,
+                          initialValue: invalidString,
+                          validator: validator,
+                          autovalidateMode: AutovalidateMode.disabled,
+                        ),
+                        TextFormField(
+                          key: invalidFieldsKey,
+                          initialValue: invalidString,
+                          validator: validator,
+                          autovalidateMode: AutovalidateMode.disabled,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      }
+
+      await tester.pumpWidget(builder());
+
+      final Set<FormFieldState<dynamic>> validationResult = formKey.currentState!.validateGranularly();
+
+      expect(validationResult.length, equals(2));
+      expect(validationResult.where((FormFieldState<dynamic> field) => field.widget.key == invalidFieldsKey).length, equals(2));
+      expect(validationResult.where((FormFieldState<dynamic> field) => field.widget.key == validFieldsKey).length, equals(0));
+    },
+  );
+
+  testWidgets(
+    'Should announce error text when validateGranularly is called',
+    (WidgetTester tester) async {
+      final GlobalKey<FormState> formKey = GlobalKey<FormState>();
+      const String validString = 'Valid string';
+      String? validator(String? s) => s == validString ? null : 'error';
+
+      Widget builder() {
+        return MaterialApp(
+          home: MediaQuery(
+            data: const MediaQueryData(),
+            child: Directionality(
+              textDirection: TextDirection.ltr,
+              child: Center(
+                child: Material(
+                  child: Form(
+                    key: formKey,
+                    child: ListView(
+                      children: <Widget>[
+                        TextFormField(
+                          initialValue: validString,
+                          validator: validator,
+                          autovalidateMode: AutovalidateMode.disabled,
+                        ),
+                        TextFormField(
+                          initialValue: '',
+                          validator: validator,
+                          autovalidateMode: AutovalidateMode.disabled,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      }
+
+      await tester.pumpWidget(builder());
+      expect(find.text('error'), findsNothing);
+
+      formKey.currentState!.validateGranularly();
+
+      await tester.pump();
+      expect(find.text('error'), findsOneWidget);
+
+      final CapturedAccessibilityAnnouncement announcement = tester.takeAnnouncements().single;
+      expect(announcement.message, 'error');
+      expect(announcement.textDirection, TextDirection.ltr);
+      expect(announcement.assertiveness, Assertiveness.assertive);
+    },
+  );
+
   testWidgets('Multiple TextFormFields communicate', (WidgetTester tester) async {
     final GlobalKey<FormState> formKey = GlobalKey<FormState>();
     final GlobalKey<FormFieldState<String>> fieldKey = GlobalKey<FormFieldState<String>>();
@@ -240,7 +396,7 @@ void main() {
     Widget builder() {
       return MaterialApp(
         home: MediaQuery(
-          data: const MediaQueryData(devicePixelRatio: 1.0),
+          data: const MediaQueryData(),
           child: Directionality(
             textDirection: TextDirection.ltr,
             child: Center(
@@ -273,7 +429,7 @@ void main() {
       await tester.pump();
 
       // Check for a new Text widget with our error text.
-      expect(find.text(testValue + '/error'), findsOneWidget);
+      expect(find.text('$testValue/error'), findsOneWidget);
       return;
     }
 
@@ -288,7 +444,7 @@ void main() {
     Widget builder() {
       return MaterialApp(
         home: MediaQuery(
-          data: const MediaQueryData(devicePixelRatio: 1.0),
+          data: const MediaQueryData(),
           child: Directionality(
             textDirection: TextDirection.ltr,
             child: Center(
@@ -327,13 +483,14 @@ void main() {
 
   testWidgets('Controller defines initial value', (WidgetTester tester) async {
     final TextEditingController controller = TextEditingController(text: 'hello');
+    addTearDown(controller.dispose);
     const String initialValue = 'hello';
     final GlobalKey<FormFieldState<String>> inputKey = GlobalKey<FormFieldState<String>>();
 
     Widget builder() {
       return MaterialApp(
         home: MediaQuery(
-          data: const MediaQueryData(devicePixelRatio: 1.0),
+          data: const MediaQueryData(),
           child: Directionality(
             textDirection: TextDirection.ltr,
             child: Center(
@@ -376,11 +533,12 @@ void main() {
     final GlobalKey<FormState> formKey = GlobalKey<FormState>();
     final GlobalKey<FormFieldState<String>> inputKey = GlobalKey<FormFieldState<String>>();
     final TextEditingController controller = TextEditingController(text: 'Plover');
+    addTearDown(controller.dispose);
 
     Widget builder() {
       return MaterialApp(
         home: MediaQuery(
-          data: const MediaQueryData(devicePixelRatio: 1.0),
+          data: const MediaQueryData(),
           child: Directionality(
             textDirection: TextDirection.ltr,
             child: Center(
@@ -420,7 +578,9 @@ void main() {
 
   testWidgets('TextEditingController updates to/from form field value', (WidgetTester tester) async {
     final TextEditingController controller1 = TextEditingController(text: 'Foo');
+    addTearDown(controller1.dispose);
     final TextEditingController controller2 = TextEditingController(text: 'Bar');
+    addTearDown(controller2.dispose);
     final GlobalKey<FormFieldState<String>> inputKey = GlobalKey<FormFieldState<String>>();
 
     TextEditingController? currentController;
@@ -432,7 +592,7 @@ void main() {
           setState = setter;
           return MaterialApp(
             home: MediaQuery(
-              data: const MediaQueryData(devicePixelRatio: 1.0),
+              data: const MediaQueryData(),
               child: Directionality(
                 textDirection: TextDirection.ltr,
                 child: Center(
@@ -532,7 +692,7 @@ void main() {
     Widget builder(bool remove) {
       return MaterialApp(
         home: MediaQuery(
-          data: const MediaQueryData(devicePixelRatio: 1.0),
+          data: const MediaQueryData(),
           child: Directionality(
             textDirection: TextDirection.ltr,
             child: Center(
@@ -587,7 +747,7 @@ void main() {
     Widget builder() {
       return MaterialApp(
         home: MediaQuery(
-          data: const MediaQueryData(devicePixelRatio: 1.0),
+          data: const MediaQueryData(),
           child: Directionality(
             textDirection: TextDirection.ltr,
             child: Center(
@@ -623,7 +783,7 @@ void main() {
     Widget builder() {
       return MaterialApp(
         home: MediaQuery(
-          data: const MediaQueryData(devicePixelRatio: 1.0),
+          data: const MediaQueryData(),
           child: Directionality(
             textDirection: TextDirection.ltr,
             child: Center(
@@ -673,7 +833,7 @@ void main() {
                     TextFormField(
                       initialValue: initialValue,
                       validator: errorText,
-                    )
+                    ),
                   ],
                 ),
               ),
@@ -683,7 +843,7 @@ void main() {
       );
     }
 
-    // Makes sure the Form widget won't autovalidate the form fields
+    // Makes sure the Form widget won't auto-validate the form fields
     // after rebuilds if there is not user interaction.
     await tester.pumpWidget(builder());
     await tester.pumpWidget(builder());
@@ -732,38 +892,6 @@ void main() {
     expect(find.text(errorText('')!), findsOneWidget);
   });
 
-  testWidgets('autovalidate parameter is still used if true', (WidgetTester tester) async {
-    late FormFieldState<String> formFieldState;
-    String? errorText(String? value) => '$value/error';
-
-    Widget builder() {
-      return MaterialApp(
-        home: MediaQuery(
-          data: const MediaQueryData(devicePixelRatio: 1.0),
-          child: Directionality(
-            textDirection: TextDirection.ltr,
-            child: Center(
-              child: Material(
-                child: FormField<String>(
-                  initialValue: 'foo',
-                  autovalidate: true,
-                  builder: (FormFieldState<String> state) {
-                    formFieldState = state;
-                    return Container();
-                  },
-                  validator: errorText,
-                ),
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
-    await tester.pumpWidget(builder());
-    expect(formFieldState.hasError, isTrue);
-  });
-
   testWidgets('Form.reset() resets form fields, and auto validation will only happen on the next user interaction if autovalidateMode is onUserInteraction', (WidgetTester tester) async {
     final GlobalKey<FormState> formState = GlobalKey<FormState>();
     String? errorText(String? value) => '$value/error';
@@ -772,7 +900,7 @@ void main() {
       return MaterialApp(
         theme: ThemeData(),
         home: MediaQuery(
-          data: const MediaQueryData(devicePixelRatio: 1.0),
+          data: const MediaQueryData(),
           child: Directionality(
             textDirection: TextDirection.ltr,
             child: Center(
@@ -808,54 +936,14 @@ void main() {
     expect(find.text(errorText('bar')!), findsNothing);
   });
 
-  testWidgets('Form.autovalidateMode and Form.autovalidate should not be used at the same time', (WidgetTester tester) async {
-    Widget builder() {
-      return MaterialApp(
-        home: MediaQuery(
-          data: const MediaQueryData(devicePixelRatio: 1.0),
-          child: Directionality(
-            textDirection: TextDirection.ltr,
-            child: Form(
-              autovalidate: true,
-              autovalidateMode: AutovalidateMode.disabled,
-              child: Container(),
-            ),
-          ),
-        ),
-      );
-    }
-    expect(() => builder(), throwsAssertionError);
-  });
-
-  testWidgets('FormField.autovalidateMode and FormField.autovalidate should not be used at the same time', (WidgetTester tester) async {
-    Widget builder() {
-      return MaterialApp(
-        home: MediaQuery(
-          data: const MediaQueryData(devicePixelRatio: 1.0),
-          child: Directionality(
-            textDirection: TextDirection.ltr,
-            child: FormField<String>(
-              autovalidate: true,
-              autovalidateMode: AutovalidateMode.disabled,
-              builder: (_) {
-                return Container();
-              },
-            ),
-          ),
-        ),
-      );
-    }
-    expect(() => builder(), throwsAssertionError);
-  });
-
-  // Regression test for https://github.com/flutter/flutter/issues/65374.
+  // Regression test for https://github.com/flutter/flutter/issues/63753.
   testWidgets('Validate form should return correct validation if the value is composing', (WidgetTester tester) async {
     final GlobalKey<FormState> formKey = GlobalKey<FormState>();
     String? fieldValue;
 
     final Widget widget = MaterialApp(
       home: MediaQuery(
-        data: const MediaQueryData(devicePixelRatio: 1.0),
+        data: const MediaQueryData(),
         child: Directionality(
           textDirection: TextDirection.ltr,
           child: Center(
@@ -864,6 +952,7 @@ void main() {
                 key: formKey,
                 child: TextFormField(
                   maxLength: 5,
+                  maxLengthEnforcement: MaxLengthEnforcement.truncateAfterCompositionEnds,
                   onSaved: (String? value) { fieldValue = value; },
                   validator: (String? value) => (value != null && value.length > 5) ? 'Exceeded' : null,
                 ),
@@ -885,86 +974,156 @@ void main() {
     expect(formKey.currentState!.validate(), isFalse);
   });
 
-  testWidgets('FormField.autovalidate parameter is passed into class the property', (WidgetTester tester) async {
-    String? errorText(String? value) => '$value/error';
-    const ObjectKey widgetKey = ObjectKey('key');
+  testWidgets('hasInteractedByUser returns false when the input has not changed', (WidgetTester tester) async {
+    final GlobalKey<FormFieldState<String>> fieldKey = GlobalKey<FormFieldState<String>>();
 
-    Widget builder({required bool autovalidate}) {
-      return MaterialApp(
-        home: MediaQuery(
-          data: const MediaQueryData(devicePixelRatio: 1.0),
-          child: Directionality(
-            textDirection: TextDirection.ltr,
-            child: Center(
-              child: Material(
-                child: FormField<String>(
-                  key: widgetKey,
-                  initialValue: 'foo',
-                  autovalidate: autovalidate,
-                  builder: (FormFieldState<String> state) {
-                    return Container();
-                  },
-                  validator: errorText,
-                ),
+    final Widget widget = MaterialApp(
+      home: MediaQuery(
+        data: const MediaQueryData(),
+        child: Directionality(
+          textDirection: TextDirection.ltr,
+          child: Center(
+            child: Material(
+              child: TextFormField(
+                key: fieldKey,
               ),
             ),
           ),
         ),
-      );
-    }
+      ),
+    );
 
-    // When autovalidate is true
-    await tester.pumpWidget(builder(autovalidate: true));
+    await tester.pumpWidget(widget);
 
-    final Finder formFieldFinder = find.byKey(widgetKey);
-    FormField<String> formField = tester.widget(formFieldFinder);
-    expect(formField.autovalidate, isTrue);
-    expect(formField.autovalidateMode, equals(AutovalidateMode.always));
-
-    // When autovalidate is false
-    await tester.pumpWidget(builder(autovalidate: false));
-
-    formField = tester.widget(formFieldFinder);
-    expect(formField.autovalidate, isFalse);
-    expect(formField.autovalidateMode, equals(AutovalidateMode.disabled));
+    expect(fieldKey.currentState!.hasInteractedByUser, isFalse);
   });
 
-  testWidgets('Form.autovalidate parameter is passed into class the property', (WidgetTester tester) async {
-    const ObjectKey widgetKey = ObjectKey('key');
+  testWidgets('hasInteractedByUser returns true after the input has changed', (WidgetTester tester) async {
+    final GlobalKey<FormFieldState<String>> fieldKey = GlobalKey<FormFieldState<String>>();
 
-    Widget builder({required bool autovalidate}) {
-      return MaterialApp(
-        home: MediaQuery(
-          data: const MediaQueryData(devicePixelRatio: 1.0),
-          child: Directionality(
-            textDirection: TextDirection.ltr,
-            child: Center(
-              child: Material(
-                child: Form(
-                  key: widgetKey,
-                  autovalidate: autovalidate,
-                  child: Container(),
-                ),
+    final Widget widget = MaterialApp(
+      home: MediaQuery(
+        data: const MediaQueryData(),
+        child: Directionality(
+          textDirection: TextDirection.ltr,
+          child: Center(
+            child: Material(
+              child: TextFormField(
+                key: fieldKey,
               ),
             ),
           ),
         ),
+      ),
+    );
+
+    await tester.pumpWidget(widget);
+
+    // initially, the field has not been interacted with
+    expect(fieldKey.currentState!.hasInteractedByUser, isFalse);
+
+    // after entering text, the field has been interacted with
+    await tester.enterText(find.byType(TextFormField), 'foo');
+    expect(fieldKey.currentState!.hasInteractedByUser, isTrue);
+  });
+
+  testWidgets('hasInteractedByUser returns false after the field is reset', (WidgetTester tester) async {
+    final GlobalKey<FormFieldState<String>> fieldKey = GlobalKey<FormFieldState<String>>();
+
+    final Widget widget = MaterialApp(
+      home: MediaQuery(
+        data: const MediaQueryData(),
+        child: Directionality(
+          textDirection: TextDirection.ltr,
+          child: Center(
+            child: Material(
+              child: TextFormField(
+                key: fieldKey,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pumpWidget(widget);
+
+    // initially, the field has not been interacted with
+    expect(fieldKey.currentState!.hasInteractedByUser, isFalse);
+
+    // after entering text, the field has been interacted with
+    await tester.enterText(find.byType(TextFormField), 'foo');
+    expect(fieldKey.currentState!.hasInteractedByUser, isTrue);
+
+    // after resetting the field, it has not been interacted with again
+    fieldKey.currentState!.reset();
+    expect(fieldKey.currentState!.hasInteractedByUser, isFalse);
+  });
+
+  testWidgets('Validator is nullified and error text behaves accordingly',
+      (WidgetTester tester) async {
+    final GlobalKey<FormState> formKey = GlobalKey<FormState>();
+    bool useValidator = false;
+    late StateSetter setState;
+
+    String? validator(String? value) {
+      if (value == null || value.isEmpty) {
+        return 'test_error';
+      }
+      return null;
+    }
+
+    Widget builder() {
+      return StatefulBuilder(
+        builder: (BuildContext context, StateSetter setter) {
+          setState = setter;
+          return MaterialApp(
+            home: MediaQuery(
+              data: const MediaQueryData(),
+              child: Directionality(
+                textDirection: TextDirection.ltr,
+                child: Center(
+                  child: Material(
+                    child: Form(
+                      key: formKey,
+                      child: TextFormField(
+                        validator: useValidator ? validator : null,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
       );
     }
 
-    // When autovalidate is true
-    await tester.pumpWidget(builder(autovalidate: true));
+    await tester.pumpWidget(builder());
 
-    final Finder formFinder = find.byKey(widgetKey);
-    Form formWidget = tester.widget(formFinder);
-    expect(formWidget.autovalidate, isTrue);
-    expect(formWidget.autovalidateMode, equals(AutovalidateMode.always));
+    // Start with no validator.
+    await tester.enterText(find.byType(TextFormField), '');
+    await tester.pump();
+    formKey.currentState!.validate();
+    await tester.pump();
+    expect(find.text('test_error'), findsNothing);
 
-    // When autovalidate is false
-    await tester.pumpWidget(builder(autovalidate: false));
+    // Now use the validator.
+    setState(() {
+      useValidator = true;
+    });
+    await tester.pump();
+    formKey.currentState!.validate();
+    await tester.pump();
+    expect(find.text('test_error'), findsOneWidget);
 
-    formWidget = tester.widget(formFinder);
-    expect(formWidget.autovalidate, isFalse);
-    expect(formWidget.autovalidateMode, equals(AutovalidateMode.disabled));
+    // Remove the validator again and expect the error to disappear.
+    setState(() {
+      useValidator = false;
+    });
+    await tester.pump();
+    formKey.currentState!.validate();
+    await tester.pump();
+    expect(find.text('test_error'), findsNothing);
   });
 }

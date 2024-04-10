@@ -11,7 +11,7 @@ import 'package:vector_math/vector_math_64.dart' show Vector3;
 // The entire state of the hex board and abstraction to get information about
 // it. Iterable so that all BoardPoints on the board can be iterated over.
 @immutable
-class Board extends Object with IterableMixin<BoardPoint?> {
+class Board extends IterableMixin<BoardPoint?> {
   Board({
     required this.boardRadius,
     required this.hexagonRadius,
@@ -110,7 +110,7 @@ class Board extends Object with IterableMixin<BoardPoint?> {
     return distanceFromCenter <= boardRadius;
   }
 
-  // Get the distance between two BoardPoins.
+  // Get the distance between two BoardPoints.
   static int getDistance(BoardPoint a, BoardPoint b) {
     final Vector3 a3 = a.cubeCoordinates;
     final Vector3 b3 = b.cubeCoordinates;
@@ -200,7 +200,7 @@ class Board extends Object with IterableMixin<BoardPoint?> {
   }
 }
 
-class _BoardIterator extends Iterator<BoardPoint?> {
+class _BoardIterator implements Iterator<BoardPoint?> {
   _BoardIterator(this.boardPoints);
 
   final List<BoardPoint> boardPoints;
@@ -275,7 +275,7 @@ class BoardPoint {
   }
 
   @override
-  int get hashCode => hashValues(q, r);
+  int get hashCode => Object.hash(q, r);
 
   BoardPoint copyWithColor(Color nextColor) => BoardPoint(q, r, color: nextColor);
 

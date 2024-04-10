@@ -14,7 +14,7 @@ Future<void> main() async {
 
     final String targetPlatform = await driver.requestData('getTargetPlatform');
 
-    Timeline timeline;
+    Timeline? timeline;
     switch (targetPlatform) {
       case 'TargetPlatform.iOS':
         {
@@ -22,24 +22,21 @@ Future<void> main() async {
             await Future<void>.delayed(const Duration(seconds: 20));
           });
         }
-        break;
       case 'TargetPlatform.android':
         {
           // Just run for 20 seconds to collect memory usage. The widget itself
           // animates during this time.
           await Future<void>.delayed(const Duration(seconds: 20));
         }
-        break;
       default:
         throw UnsupportedError('Unsupported platform $targetPlatform');
     }
 
     if (timeline != null) {
       final TimelineSummary summary = TimelineSummary.summarize(timeline);
-      await summary.writeSummaryToFile(fileName, pretty: true);
       await summary.writeTimelineToFile(fileName, pretty: true);
     }
 
     await driver.close();
-  });
+  }, timeout: Timeout.none);
 }

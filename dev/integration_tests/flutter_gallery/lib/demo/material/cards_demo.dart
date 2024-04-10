@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../gallery/demo.dart';
@@ -65,8 +64,7 @@ const List<TravelDestination> destinations = <TravelDestination>[
 ];
 
 class TravelDestinationItem extends StatelessWidget {
-  const TravelDestinationItem({ Key? key, required this.destination, this.shape })
-    : super(key: key);
+  const TravelDestinationItem({ super.key, required this.destination, this.shape });
 
   // This height will allow for all the Card's content to fit comfortably within the card.
   static const double height = 338.0;
@@ -100,8 +98,7 @@ class TravelDestinationItem extends StatelessWidget {
 }
 
 class TappableTravelDestinationItem extends StatelessWidget {
-  const TappableTravelDestinationItem({ Key? key, required this.destination, this.shape })
-    : super(key: key);
+  const TappableTravelDestinationItem({ super.key, required this.destination, this.shape });
 
   // This height will allow for all the Card's content to fit comfortably within the card.
   static const double height = 298.0;
@@ -144,14 +141,13 @@ class TappableTravelDestinationItem extends StatelessWidget {
 }
 
 class SelectableTravelDestinationItem extends StatefulWidget {
-  const SelectableTravelDestinationItem({ Key? key, required this.destination, this.shape })
-    : super(key: key);
+  const SelectableTravelDestinationItem({ super.key, required this.destination, this.shape });
 
   final TravelDestination destination;
   final ShapeBorder? shape;
 
   @override
-  _SelectableTravelDestinationItemState createState() => _SelectableTravelDestinationItemState();
+  State<SelectableTravelDestinationItem> createState() => _SelectableTravelDestinationItemState();
 }
 
 class _SelectableTravelDestinationItemState extends State<SelectableTravelDestinationItem> {
@@ -223,9 +219,9 @@ class _SelectableTravelDestinationItemState extends State<SelectableTravelDestin
 
 class SectionTitle extends StatelessWidget {
   const SectionTitle({
-    Key? key,
+    super.key,
     this.title,
-  }) : super(key: key);
+  });
 
   final String? title;
 
@@ -235,24 +231,23 @@ class SectionTitle extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(4.0, 4.0, 4.0, 12.0),
       child: Align(
         alignment: Alignment.centerLeft,
-        child: Text(title!, style: Theme.of(context).textTheme.subtitle1),
+        child: Text(title!, style: Theme.of(context).textTheme.titleMedium),
       ),
     );
   }
 }
 
 class TravelDestinationContent extends StatelessWidget {
-  const TravelDestinationContent({ Key? key, required this.destination })
-    : super(key: key);
+  const TravelDestinationContent({ super.key, required this.destination });
 
   final TravelDestination destination;
 
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    final TextStyle titleStyle = theme.textTheme.headline5!.copyWith(color: Colors.white);
-    final TextStyle descriptionStyle = theme.textTheme.subtitle1!;
-    final ButtonStyle textButtonStyle = TextButton.styleFrom(primary: Colors.amber.shade500);
+    final TextStyle titleStyle = theme.textTheme.headlineSmall!.copyWith(color: Colors.white);
+    final TextStyle descriptionStyle = theme.textTheme.titleMedium!;
+    final ButtonStyle textButtonStyle = TextButton.styleFrom(foregroundColor: Colors.amber.shade500);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -315,20 +310,24 @@ class TravelDestinationContent extends StatelessWidget {
         ),
         if (destination.type == CardDemoType.standard)
           // share, explore buttons
-          ButtonBar(
-            alignment: MainAxisAlignment.start,
-            children: <Widget>[
-              TextButton(
-                style: textButtonStyle,
-                onPressed: () { print('pressed'); },
-                child: Text('SHARE', semanticsLabel: 'Share ${destination.title}'),
-              ),
-              TextButton(
-                style: textButtonStyle,
-                onPressed: () { print('pressed'); },
-                child: Text('EXPLORE', semanticsLabel: 'Explore ${destination.title}'),
-              ),
-            ],
+          Padding(
+            padding: const EdgeInsetsDirectional.only(start: 8, top: 8),
+            child: OverflowBar(
+              alignment: MainAxisAlignment.start,
+              spacing: 8,
+              children: <Widget>[
+                TextButton(
+                  style: textButtonStyle,
+                  onPressed: () { print('pressed'); },
+                  child: Text('SHARE', semanticsLabel: 'Share ${destination.title}'),
+                ),
+                TextButton(
+                  style: textButtonStyle,
+                  onPressed: () { print('pressed'); },
+                  child: Text('EXPLORE', semanticsLabel: 'Explore ${destination.title}'),
+                ),
+              ],
+            ),
           ),
       ],
     );
@@ -336,10 +335,12 @@ class TravelDestinationContent extends StatelessWidget {
 }
 
 class CardsDemo extends StatefulWidget {
+  const CardsDemo({super.key});
+
   static const String routeName = '/material/cards';
 
   @override
-  _CardsDemoState createState() => _CardsDemoState();
+  State<CardsDemo> createState() => _CardsDemoState();
 }
 
 class _CardsDemoState extends State<CardsDemo> {
@@ -374,19 +375,17 @@ class _CardsDemoState extends State<CardsDemo> {
       ),
       body: Scrollbar(
         child: ListView(
+          primary: true,
           padding: const EdgeInsets.only(top: 8.0, left: 8.0, right: 8.0),
           children: destinations.map<Widget>((TravelDestination destination) {
             Widget? child;
             switch (destination.type) {
               case CardDemoType.standard:
                 child = TravelDestinationItem(destination: destination, shape: _shape);
-                break;
               case CardDemoType.tappable:
                 child = TappableTravelDestinationItem(destination: destination, shape: _shape);
-                break;
               case CardDemoType.selectable:
                 child = SelectableTravelDestinationItem(destination: destination, shape: _shape);
-                break;
             }
 
             return Container(

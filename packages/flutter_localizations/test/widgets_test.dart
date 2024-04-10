@@ -2,12 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'dart:ui' as ui;
-
-import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 class TestLocalizations {
   TestLocalizations(this.locale, this.prefix);
@@ -169,7 +167,7 @@ Widget buildFrame({
 }
 
 class SyncLoadTest extends StatefulWidget {
-  const SyncLoadTest();
+  const SyncLoadTest({super.key});
 
   @override
   SyncLoadTestState createState() => SyncLoadTestState();
@@ -575,7 +573,7 @@ void main() {
             context: context,
             child: Builder(
               builder: (BuildContext context) {
-                final Locale locale = Localizations.localeOf(context)!;
+                final Locale locale = Localizations.localeOf(context);
                 final TextDirection direction = WidgetsLocalizations.of(context).textDirection;
                 return Text('$locale $direction');
               },
@@ -616,7 +614,7 @@ void main() {
             ],
             child: Builder(
               builder: (BuildContext context) {
-                final Locale locale = Localizations.localeOf(context)!;
+                final Locale locale = Localizations.localeOf(context);
                 final TextDirection direction = WidgetsLocalizations.of(context).textDirection;
                 return Text('$locale $direction');
               },
@@ -652,7 +650,7 @@ void main() {
           const OnlyRTLDefaultWidgetsLocalizationsDelegate(),
         ],
         buildContent: (BuildContext context) {
-          final Locale locale = Localizations.localeOf(context)!;
+          final Locale locale = Localizations.localeOf(context);
           final TextDirection direction = WidgetsLocalizations.of(context).textDirection;
           return Text('$locale $direction');
         },
@@ -689,8 +687,8 @@ void main() {
           const OnlyRTLDefaultWidgetsLocalizationsDelegate(),
         ],
         buildContent: (BuildContext context) {
-          final Locale locale1 = ui.window.locales.first;
-          final Locale locale2 = ui.window.locales[1];
+          final Locale locale1 = WidgetsBinding.instance.platformDispatcher.locales.first;
+          final Locale locale2 = WidgetsBinding.instance.platformDispatcher.locales[1];
           return Text('$locale1 $locale2');
         },
       )
@@ -760,7 +758,7 @@ void main() {
           Locale('ja'),
         ],
         buildContent: (BuildContext context) {
-          final Locale locale = Localizations.localeOf(context)!;
+          final Locale locale = Localizations.localeOf(context);
           return Text('$locale');
         },
       )
@@ -783,7 +781,7 @@ void main() {
           Locale('zh', 'TW'),
         ],
         buildContent: (BuildContext context) {
-          final Locale locale = Localizations.localeOf(context)!;
+          final Locale locale = Localizations.localeOf(context);
           return Text('$locale');
         },
       )
@@ -815,7 +813,7 @@ void main() {
           Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hant', countryCode: 'HK'),
         ],
         buildContent: (BuildContext context) {
-          final Locale locale = Localizations.localeOf(context)!;
+          final Locale locale = Localizations.localeOf(context);
           return Text('$locale');
         },
       )
@@ -956,7 +954,7 @@ void main() {
           Locale.fromSubtags(languageCode: 'zh'),
         ],
         buildContent: (BuildContext context) {
-          final Locale locale = Localizations.localeOf(context)!;
+          final Locale locale = Localizations.localeOf(context);
           return Text('$locale');
         },
       )
@@ -1096,7 +1094,7 @@ void main() {
           Locale('it', 'IT'),
         ],
         buildContent: (BuildContext context) {
-          final Locale locale = Localizations.localeOf(context)!;
+          final Locale locale = Localizations.localeOf(context);
           return Text('$locale');
         },
       )
@@ -1119,7 +1117,7 @@ void main() {
           Locale('it', 'IT'),
         ],
         buildContent: (BuildContext context) {
-          final Locale locale = Localizations.localeOf(context)!;
+          final Locale locale = Localizations.localeOf(context);
           return Text('$locale');
         },
       )
@@ -1152,7 +1150,7 @@ void main() {
           Locale('pt', 'PT'),
         ],
         buildContent: (BuildContext context) {
-          final Locale locale = Localizations.localeOf(context)!;
+          final Locale locale = Localizations.localeOf(context);
           return Text('$locale');
         },
       )
@@ -1219,7 +1217,7 @@ void main() {
           Locale('de', 'DE'),
         ],
         buildContent: (BuildContext context) {
-          final Locale locale = Localizations.localeOf(context)!;
+          final Locale locale = Localizations.localeOf(context);
           return Text('$locale');
         },
       )
@@ -1283,7 +1281,7 @@ void main() {
           Locale('vi'),
         ],
         buildContent: (BuildContext context) {
-          final Locale locale = Localizations.localeOf(context)!;
+          final Locale locale = Localizations.localeOf(context);
           return Text('$locale');
         },
       )
@@ -1430,12 +1428,13 @@ void main() {
           Locale('de', 'DE'),
         ],
         localeResolutionCallback: (Locale? locale, Iterable<Locale> supportedLocales) {
-          if (locale == null)
+          if (locale == null) {
             return const Locale('und', 'US');
+          }
           return const Locale('en', 'US');
         },
         buildContent: (BuildContext context) {
-          final Locale locale = Localizations.localeOf(context)!;
+          final Locale locale = Localizations.localeOf(context);
           return Text('$locale');
         },
       )

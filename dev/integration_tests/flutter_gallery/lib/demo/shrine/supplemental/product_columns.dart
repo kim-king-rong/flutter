@@ -4,11 +4,12 @@
 
 import 'package:flutter/material.dart';
 
-import 'package:flutter_gallery/demo/shrine/model/product.dart';
-import 'package:flutter_gallery/demo/shrine/supplemental/product_card.dart';
+import '../model/product.dart';
+import 'product_card.dart';
 
 class TwoProductCardColumn extends StatelessWidget {
   const TwoProductCardColumn({
+    super.key,
     required this.bottom,
     this.top,
   });
@@ -57,7 +58,7 @@ class TwoProductCardColumn extends StatelessWidget {
 }
 
 class OneProductCardColumn extends StatelessWidget {
-  const OneProductCardColumn({this.product});
+  const OneProductCardColumn({super.key, this.product});
 
   final Product? product;
 

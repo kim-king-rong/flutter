@@ -7,14 +7,16 @@ import 'package:flutter/material.dart';
 import '../../gallery/demo.dart';
 
 class BottomAppBarDemo extends StatefulWidget {
+  const BottomAppBarDemo({super.key});
+
   static const String routeName = '/material/bottom_app_bar';
 
   @override
   State createState() => _BottomAppBarDemoState();
 }
 
-// Flutter generally frowns upon abbrevation however this class uses two
-// abbrevations extensively: "fab" for floating action button, and "bab"
+// Flutter generally frowns upon abbreviation however this class uses two
+// abbreviations extensively: "fab" for floating action button, and "bab"
 // for bottom application bar.
 
 class _BottomAppBarDemoState extends State<BottomAppBarDemo> {
@@ -25,7 +27,6 @@ class _BottomAppBarDemoState extends State<BottomAppBarDemo> {
   static const _ChoiceValue<Widget> kNoFab = _ChoiceValue<Widget>(
     title: 'None',
     label: 'do not show a floating action button',
-    value: null,
   );
 
   static const _ChoiceValue<Widget> kCircularFab = _ChoiceValue<Widget>(
@@ -33,8 +34,8 @@ class _BottomAppBarDemoState extends State<BottomAppBarDemo> {
     label: 'circular floating action button',
     value: FloatingActionButton(
       onPressed: _showSnackbar,
-      child: Icon(Icons.add, semanticLabel: 'Action'),
       backgroundColor: Colors.orange,
+      child: Icon(Icons.add, semanticLabel: 'Action'),
     ),
   );
 
@@ -160,6 +161,7 @@ class _BottomAppBarDemoState extends State<BottomAppBarDemo> {
           ),
           body: Scrollbar(
             child: ListView(
+              primary: true,
               padding: const EdgeInsets.only(bottom: 88.0),
               children: <Widget>[
                 const _Heading('FAB Shape'),
@@ -202,12 +204,15 @@ class _BottomAppBarDemoState extends State<BottomAppBarDemo> {
   }
 
   NotchedShape? _selectNotch() {
-    if (!_showNotch.value!)
+    if (!_showNotch.value!) {
       return null;
-    if (_fabShape == kCircularFab)
+    }
+    if (_fabShape == kCircularFab) {
       return const CircularNotchedRectangle();
-    if (_fabShape == kDiamondFab)
+    }
+    if (_fabShape == kDiamondFab) {
       return const _DiamondNotchedRectangle();
+    }
     return null;
   }
 }
@@ -257,7 +262,7 @@ class _RadioItem<T> extends StatelessWidget {
                   },
                   child: Text(
                     value.title!,
-                    style: theme.textTheme.subtitle1,
+                    style: theme.textTheme.titleMedium,
                   ),
                 ),
               ),
@@ -327,7 +332,7 @@ class _Heading extends StatelessWidget {
       alignment: AlignmentDirectional.centerStart,
       child: Text(
         text,
-        style: theme.textTheme.bodyText1,
+        style: theme.textTheme.bodyLarge,
       ),
     );
   }
@@ -397,9 +402,9 @@ class _DemoDrawer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Drawer(
+    return const Drawer(
       child: Column(
-        children: const <Widget>[
+        children: <Widget>[
           ListTile(
             leading: Icon(Icons.search),
             title: Text('Search'),
@@ -429,18 +434,18 @@ class _DiamondFab extends StatelessWidget {
     return Material(
       shape: const _DiamondBorder(),
       color: Colors.orange,
+      elevation: 6.0,
       child: InkWell(
         onTap: onPressed,
-        child: Container(
+        child: SizedBox(
           width: 56.0,
           height: 56.0,
           child: IconTheme.merge(
-            data: IconThemeData(color: Theme.of(context).accentIconTheme.color),
+            data: IconThemeData(color: Theme.of(context).colorScheme.secondary),
             child: child!,
           ),
         ),
       ),
-      elevation: 6.0,
     );
   }
 }
@@ -450,8 +455,9 @@ class _DiamondNotchedRectangle implements NotchedShape {
 
   @override
   Path getOuterPath(Rect host, Rect? guest) {
-    if (!host.overlaps(guest!))
+    if (!host.overlaps(guest!)) {
       return Path()..addRect(host);
+    }
     assert(guest.width > 0.0);
 
     final Rect intersection = guest.intersect(host);
@@ -488,7 +494,7 @@ class _DiamondBorder extends ShapeBorder {
 
   @override
   EdgeInsetsGeometry get dimensions {
-    return const EdgeInsets.only();
+    return EdgeInsets.zero;
   }
 
   @override

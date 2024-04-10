@@ -40,13 +40,15 @@ class NavigationIconView {
 
   FadeTransition transition(BottomNavigationBarType type, BuildContext context) {
     Color? iconColor;
-    if (type == BottomNavigationBarType.shifting) {
-      iconColor = _color;
-    } else {
-      final ThemeData themeData = Theme.of(context);
-      iconColor = themeData.brightness == Brightness.light
-          ? themeData.primaryColor
-          : themeData.accentColor;
+    switch (type) {
+      case BottomNavigationBarType.shifting:
+        iconColor = _color;
+      case BottomNavigationBarType.fixed:
+        final ThemeData theme = Theme.of(context);
+        iconColor = switch (theme.brightness) {
+          Brightness.light => theme.colorScheme.primary,
+          Brightness.dark  => theme.colorScheme.secondary,
+        };
     }
 
     return FadeTransition(
@@ -74,6 +76,8 @@ class NavigationIconView {
 }
 
 class CustomIcon extends StatelessWidget {
+  const CustomIcon({super.key});
+
   @override
   Widget build(BuildContext context) {
     final IconThemeData iconTheme = IconTheme.of(context);
@@ -87,6 +91,8 @@ class CustomIcon extends StatelessWidget {
 }
 
 class CustomInactiveIcon extends StatelessWidget {
+  const CustomInactiveIcon({super.key});
+
   @override
   Widget build(BuildContext context) {
     final IconThemeData iconTheme = IconTheme.of(context);
@@ -102,10 +108,12 @@ class CustomInactiveIcon extends StatelessWidget {
 }
 
 class BottomNavigationDemo extends StatefulWidget {
+  const BottomNavigationDemo({super.key});
+
   static const String routeName = '/material/bottom_navigation';
 
   @override
-  _BottomNavigationDemoState createState() => _BottomNavigationDemoState();
+  State<BottomNavigationDemo> createState() => _BottomNavigationDemoState();
 }
 
 class _BottomNavigationDemoState extends State<BottomNavigationDemo>
@@ -125,8 +133,8 @@ class _BottomNavigationDemoState extends State<BottomNavigationDemo>
         vsync: this,
       ),
       NavigationIconView(
-        activeIcon: CustomIcon(),
-        icon: CustomInactiveIcon(),
+        activeIcon: const CustomIcon(),
+        icon: const CustomInactiveIcon(),
         title: 'Box',
         color: Colors.deepOrange,
         vsync: this,
@@ -158,8 +166,9 @@ class _BottomNavigationDemoState extends State<BottomNavigationDemo>
 
   @override
   void dispose() {
-    for (final NavigationIconView view in _navigationViews)
+    for (final NavigationIconView view in _navigationViews) {
       view.controller.dispose();
+    }
     super.dispose();
   }
 

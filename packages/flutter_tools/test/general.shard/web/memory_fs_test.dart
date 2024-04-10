@@ -20,17 +20,19 @@ void main() {
     final File metadata = fileSystem.file('metadata')
       ..writeAsStringSync('{}');
     final File manifest = fileSystem.file('manifest')
-      ..writeAsStringSync(json.encode(<String, Object>{'/foo.js': <String, Object>{
-        'code': <int>[0, source.lengthSync()],
-        'sourcemap': <int>[0, 2],
-        'metadata':  <int>[0, 2],
-      }}));
+      ..writeAsStringSync(json.encode(<String, Object>{
+        '/foo.js': <String, Object>{
+          'code': <int>[0, source.lengthSync()],
+          'sourcemap': <int>[0, 2],
+          'metadata':  <int>[0, 2],
+        },
+      }));
     final WebMemoryFS webMemoryFS = WebMemoryFS();
     webMemoryFS.write(source, manifest, sourcemap, metadata);
 
-    expect(utf8.decode(webMemoryFS.files['foo.js']), 'main() {}');
-    expect(utf8.decode(webMemoryFS.sourcemaps['foo.js.map']), '{}');
-    expect(utf8.decode(webMemoryFS.metadataFiles['foo.js.metadata']), '{}');
+    expect(utf8.decode(webMemoryFS.files['foo.js']!), 'main() {}');
+    expect(utf8.decode(webMemoryFS.sourcemaps['foo.js.map']!), '{}');
+    expect(utf8.decode(webMemoryFS.metadataFiles['foo.js.metadata']!), '{}');
     expect(webMemoryFS.mergedMetadata, '{}');
   });
 }

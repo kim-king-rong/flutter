@@ -3,7 +3,9 @@
 // found in the LICENSE file.
 
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:leak_tracker_flutter_testing/leak_tracker_flutter_testing.dart';
 
 void main() {
   testWidgets('Use home', (WidgetTester tester) async {
@@ -80,7 +82,9 @@ void main() {
     expect(find.text('generated home'), findsOneWidget);
   });
 
-  testWidgets('Use onUnknownRoute', (WidgetTester tester) async {
+  testWidgets('Use onUnknownRoute',
+  experimentalLeakTesting: LeakTesting.settings.withIgnoredAll(), // leaking by design because of exception
+  (WidgetTester tester) async {
     late String unknownForRouteCalled;
     await tester.pumpWidget(
       CupertinoApp(
@@ -172,15 +176,13 @@ void main() {
     expect(find.text('second route'), findsNothing);
   });
 
-  testWidgets('Throws FlutterError when onUnknownRoute is null', (
-      WidgetTester tester) async {
+  testWidgets('Throws FlutterError when onUnknownRoute is null', (WidgetTester tester) async {
     final GlobalKey<NavigatorState> key = GlobalKey();
     await tester.pumpWidget(
       CupertinoApp(
         home: CupertinoTabView(
           navigatorKey: key,
           builder: (BuildContext context) => const Text('first route'),
-          onUnknownRoute: null,
         ),
       ),
     );
@@ -191,25 +193,27 @@ void main() {
       error = e;
     }
     expect(error, isNotNull);
-    expect(error.toStringDeep(), equalsIgnoringHashCodes(
-      'FlutterError\n'
-      '   Could not find a generator for route RouteSettings("/2", null) in\n'
-      '   the _CupertinoTabViewState.\n'
-      '   Generators for routes are searched for in the following order:\n'
-      '    1. For the "/" route, the "builder" property, if non-null, is\n'
-      '   used.\n'
-      '    2. Otherwise, the "routes" table is used, if it has an entry for\n'
-      '   the route.\n'
-      '    3. Otherwise, onGenerateRoute is called. It should return a\n'
-      '   non-null value for any valid route not handled by "builder" and\n'
-      '   "routes".\n'
-      '    4. Finally if all else fails onUnknownRoute is called.\n'
-      '   Unfortunately, onUnknownRoute was not set.\n'
-    ));
+    expect(
+      error.toStringDeep(),
+      equalsIgnoringHashCodes(
+        'FlutterError\n'
+        '   Could not find a generator for route RouteSettings("/2", null) in\n'
+        '   the _CupertinoTabViewState.\n'
+        '   Generators for routes are searched for in the following order:\n'
+        '    1. For the "/" route, the "builder" property, if non-null, is\n'
+        '   used.\n'
+        '    2. Otherwise, the "routes" table is used, if it has an entry for\n'
+        '   the route.\n'
+        '    3. Otherwise, onGenerateRoute is called. It should return a\n'
+        '   non-null value for any valid route not handled by "builder" and\n'
+        '   "routes".\n'
+        '    4. Finally if all else fails onUnknownRoute is called.\n'
+        '   Unfortunately, onUnknownRoute was not set.\n',
+      ),
+    );
   });
 
-  testWidgets('Throws FlutterError when onUnknownRoute returns null', (
-      WidgetTester tester) async {
+  testWidgets('Throws FlutterError when onUnknownRoute returns null', (WidgetTester tester) async {
     final GlobalKey<NavigatorState> key = GlobalKey<NavigatorState>();
     await tester.pumpWidget(
       CupertinoApp(
@@ -227,13 +231,16 @@ void main() {
       error = e;
     }
     expect(error, isNotNull);
-    expect(error.toStringDeep(), equalsIgnoringHashCodes(
-      'FlutterError\n'
-      '   The onUnknownRoute callback returned null.\n'
-      '   When the _CupertinoTabViewState requested the route\n'
-      '   RouteSettings("/2", null) from its onUnknownRoute callback, the\n'
-      '   callback returned null. Such callbacks must never return null.\n'
-    ));
+    expect(
+      error.toStringDeep(),
+      equalsIgnoringHashCodes(
+        'FlutterError\n'
+        '   The onUnknownRoute callback returned null.\n'
+        '   When the _CupertinoTabViewState requested the route\n'
+        '   RouteSettings("/2", null) from its onUnknownRoute callback, the\n'
+        '   callback returned null. Such callbacks must never return null.\n',
+      ),
+    );
   });
 
   testWidgets('Navigator of CupertinoTabView restores state', (WidgetTester tester) async {
@@ -250,7 +257,7 @@ void main() {
           ),
           routes: <String, WidgetBuilder>{
             '/2' : (BuildContext context) => const Text('second route'),
-          }
+          },
         ),
       ),
     );
@@ -285,5 +292,38 @@ void main() {
 
     expect(find.text('home'), findsOneWidget);
     expect(find.text('second route'), findsNothing);
+  });
+
+  testWidgets('Handles Android back button', (WidgetTester tester) async {
+    final GlobalKey<NavigatorState> key = GlobalKey<NavigatorState>();
+    await tester.pumpWidget(
+      CupertinoApp(
+        home: CupertinoTabScaffold(
+          tabBar: CupertinoTabBar(
+            items: const <BottomNavigationBarItem>[
+              BottomNavigationBarItem(label: '', icon: Text('1')),
+              BottomNavigationBarItem(label: '', icon: Text('2'))
+            ],
+          ),
+          tabBuilder: (_, int i) => PopScope(
+            canPop: false,
+            child: CupertinoTabView(
+              navigatorKey: key,
+              builder: (BuildContext context) => const Text('first route'),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('first route'), findsOneWidget);
+
+    // Simulate android back button intent.
+    final ByteData message = const JSONMethodCodec().encodeMethodCall(const MethodCall('popRoute'));
+    await tester.binding.defaultBinaryMessenger.handlePlatformMessage('flutter/navigation', message, (_) {});
+    await tester.pumpAndSettle();
+
+    // Navigator didn't pop, so first route is still visible
+    expect(find.text('first route'), findsOneWidget);
   });
 }
